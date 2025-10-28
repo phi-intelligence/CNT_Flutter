@@ -1,0 +1,282 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
+import '../../theme/app_typography.dart';
+
+/// Meeting Created Screen
+/// Shows meeting details with share options and join button
+class MeetingCreatedScreen extends StatefulWidget {
+  final String meetingId;
+  final String meetingLink;
+  final bool isInstant;
+
+  const MeetingCreatedScreen({
+    super.key,
+    required this.meetingId,
+    required this.meetingLink,
+    this.isInstant = true,
+  });
+
+  @override
+  State<MeetingCreatedScreen> createState() => _MeetingCreatedScreenState();
+}
+
+class _MeetingCreatedScreenState extends State<MeetingCreatedScreen> {
+  bool _isCopied = false;
+
+  void _handleBack() {
+    Navigator.pop(context);
+  }
+
+  void _handleJoinMeeting() {
+    // TODO: Navigate to MeetingRoom
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Joining meeting...')),
+    );
+  }
+
+  void _handleCopyLink() async {
+    await Clipboard.setData(ClipboardData(text: widget.meetingLink));
+    setState(() {
+      _isCopied = true;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Link copied to clipboard!')),
+    );
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _isCopied = false;
+        });
+      }
+    });
+  }
+
+  void _handleShare() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Sharing meeting link...')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.backgroundPrimary,
+      appBar: AppBar(
+        backgroundColor: AppColors.backgroundPrimary,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          onPressed: _handleBack,
+        ),
+        title: Text(
+          'Meeting Created',
+          style: AppTypography.heading3.copyWith(color: AppColors.textPrimary),
+        ),
+        centerTitle: true,
+        actions: [
+          const SizedBox(width: 40), // Balance leading icon
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.large),
+          child: Column(
+            children: [
+              // Meeting Icon
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundSecondary,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.video_call,
+                  size: 48,
+                  color: AppColors.primaryMain,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.large),
+
+              // Meeting Title
+              Text(
+                widget.isInstant ? 'Instant Meeting' : 'Scheduled Meeting',
+                style: AppTypography.heading4.copyWith(color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: AppSpacing.tiny),
+
+              // Meeting ID
+              Text(
+                'Meeting ID: ${widget.meetingId}',
+                style: AppTypography.body.copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: AppSpacing.large),
+
+              // Meeting Link
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.medium),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundSecondary,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+                  border: Border.all(color: AppColors.borderPrimary),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Meeting Link:',
+                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: AppSpacing.tiny),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.meetingLink,
+                            style: AppTypography.bodySmall.copyWith(color: AppColors.textPrimary),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.small),
+                        IconButton(
+                          icon: Icon(
+                            _isCopied ? Icons.check : Icons.copy,
+                            color: AppColors.primaryMain,
+                          ),
+                          onPressed: _handleCopyLink,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.extraLarge),
+
+              // Share Section
+              Text(
+                'Share Meeting',
+                style: AppTypography.heading4.copyWith(color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: AppSpacing.medium),
+
+              // Share Options Grid
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildShareOption(
+                    icon: Icons.chat,
+                    label: 'WhatsApp',
+                    color: const Color(0xFF25D366),
+                    onTap: _handleShare,
+                  ),
+                  _buildShareOption(
+                    icon: Icons.email,
+                    label: 'Email',
+                    color: const Color(0xFFEA4335),
+                    onTap: _handleShare,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.medium),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildShareOption(
+                    icon: Icons.message,
+                    label: 'SMS',
+                    color: const Color(0xFF34A853),
+                    onTap: _handleShare,
+                  ),
+                  _buildShareOption(
+                    icon: Icons.more_horiz,
+                    label: 'More',
+                    color: AppColors.textSecondary,
+                    onTap: _handleShare,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: AppSpacing.extraLarge),
+
+              // Join Meeting Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _handleJoinMeeting,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryMain,
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.large),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.video_call, color: Colors.white),
+                      const SizedBox(width: AppSpacing.small),
+                      Text(
+                        'Join Meeting',
+                        style: AppTypography.body.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShareOption({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: AppSpacing.small),
+          padding: const EdgeInsets.all(AppSpacing.medium),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 24),
+              const SizedBox(width: AppSpacing.tiny),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
