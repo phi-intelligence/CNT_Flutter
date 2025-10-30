@@ -41,6 +41,16 @@ class AudioPlayerState extends ChangeNotifier {
       notifyListeners();
     });
 
+    // Listen for when playback completes
+    _player.playerStateStream.listen((state) {
+      if (state.processingState == ProcessingState.completed) {
+        // Track finished - clear it so player disappears
+        _currentTrack = null;
+        _isPlaying = false;
+        notifyListeners();
+      }
+    });
+
     // Note: loadingStateStream may not be available in this just_audio version
     // _player.loadingStateStream.listen((loadingState) {
     //   _isLoading = loadingState == LoadingState.loading || loadingState == LoadingState.buffering;
@@ -101,6 +111,15 @@ class AudioPlayerState extends ChangeNotifier {
   Future<void> pause() async {
     await _player.pause();
     _isPlaying = false;
+    notifyListeners();
+  }
+
+  /// Stop playback and clear current track
+  Future<void> stop() async {
+    await _player.stop();
+    _isPlaying = false;
+    _currentTrack = null;
+    _position = Duration.zero;
     notifyListeners();
   }
 

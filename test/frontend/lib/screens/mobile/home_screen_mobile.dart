@@ -60,14 +60,6 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
 
     // Play audio via AudioPlayerState
     context.read<AudioPlayerState>().playContent(item);
-    
-    // Show confirmation
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Now playing: ${item.title}'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
   void _handleItemTap(ContentItem item) {
@@ -80,9 +72,9 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
     final podcastProvider = Provider.of<PodcastProvider>(context, listen: false);
     final musicProvider = Provider.of<MusicProvider>(context, listen: false);
 
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      body: Stack(
+    return Container(
+      color: AppColors.backgroundPrimary,
+      child: Stack(
         children: [
           RefreshIndicator(
             onRefresh: () async {

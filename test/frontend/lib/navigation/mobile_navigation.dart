@@ -56,25 +56,31 @@ class _MobileNavigationLayoutState extends State<MobileNavigationLayout> {
         }
       },
       child: Scaffold(
+        extendBody: true, // Allow content to extend behind navbar/player
         body: Stack(
+          fit: StackFit.expand, // Ensure full screen bounds for proper positioning
           children: [
+            // Screen content
             _screens[_currentIndex],
             // Sliding audio player overlay at bottom (above navbar)
+            // ONLY show on Home page (index 0)
             Consumer<AudioPlayerState>(
               builder: (context, audioPlayer, child) {
-                // Only show if there's a current track
-                if (audioPlayer.currentTrack == null) {
+                // Only show on homepage AND if there's a current track
+                if (_currentIndex != 0 || audioPlayer.currentTrack == null) {
                   return const SizedBox.shrink();
                 }
                 
                 final playerState = _playerKey.currentState;
                 final isExpanded = playerState?.isExpanded ?? false;
                 
-                // Position player at bottom, accounting for navbar height when minimized
+                // Position player at bottom
+                // When expanded: fill full screen (bottom: 0)
+                // When minimized: position directly above navbar (navbar is at bottom: 0, player sits above it)
                 return Positioned(
-                  bottom: isExpanded ? 0 : 60,
-                  left: 0,
-                  right: 0,
+                  bottom: isExpanded ? 0.0 : tabBarHeight.toDouble(),
+                  left: 0.0,
+                  right: 0.0,
                   child: SlidingAudioPlayer(key: _playerKey),
                 );
               },

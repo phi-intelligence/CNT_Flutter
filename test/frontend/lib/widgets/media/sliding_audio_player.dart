@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/audio_player_provider.dart';
+import '../../models/content_item.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/audio/vinyl_disc.dart';
 
@@ -14,28 +15,58 @@ class SlidingAudioPlayer extends StatefulWidget {
 
 /// Public state class for GlobalKey access
 class SlidingAudioPlayerState extends State<SlidingAudioPlayer> with SingleTickerProviderStateMixin {
-  bool _isExpanded = true; // Start expanded when track starts
-  
-  // Track if this is the first play ever
-  static bool _firstPlayEver = true;
+  bool _isExpanded = false; // Start minimized - user taps to expand
+  ContentItem? _lastTrackId; // Track the current track to detect changes
   
   // Expose state for external access (used by GlobalKey)
   bool get isExpanded => _isExpanded;
   
   // ValueNotifier to notify parent of state changes
-  static final ValueNotifier<bool> expansionStateNotifier = ValueNotifier<bool>(true);
+  static final ValueNotifier<bool> expansionStateNotifier = ValueNotifier<bool>(false);
   
   @override
   void initState() {
     super.initState();
-    // Only expand on first play ever
-    _isExpanded = _firstPlayEver;
+    expansionStateNotifier.value = _isExpanded;
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final audioPlayer = Provider.of<AudioPlayerState>(context, listen: false);
     
-    if (_firstPlayEver) {
-      _firstPlayEver = false; // Mark that we've played once
+    // Handle track becoming null (stopped/cleared)
+    if (audioPlayer.currentTrack == null && _lastTrackId != null) {
+      // Track was cleared - reset expansion state immediately
+      _lastTrackId = null;
+      if (_isExpanded && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _isExpanded = false;
+              expansionStateNotifier.value = _isExpanded;
+            });
+          }
+        });
+      }
+      return;
     }
     
-    expansionStateNotifier.value = _isExpanded;
+    // Handle new track playing
+    if (audioPlayer.currentTrack != null && audioPlayer.currentTrack != _lastTrackId) {
+      // New track detected - ensure minimized
+      _lastTrackId = audioPlayer.currentTrack;
+      if (_isExpanded && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _isExpanded = false;
+              expansionStateNotifier.value = _isExpanded;
+            });
+          }
+        });
+      }
+    }
   }
   
   void minimizePlayer() {
@@ -57,7 +88,7 @@ class SlidingAudioPlayerState extends State<SlidingAudioPlayer> with SingleTicke
   String _formatDuration(Duration duration) {
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;
-    return '${minutes.toString().padLeft(1, '0')}:${seconds.toString().padLeft(2, '0')}';
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -66,16 +97,34 @@ class SlidingAudioPlayerState extends State<SlidingAudioPlayer> with SingleTicke
 
     // Don't show anything if no track is playing
     if (audioPlayer.currentTrack == null) {
+      // Reset expansion state if it was expanded to ensure clean hide
+      if (_isExpanded && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _isExpanded = false;
+              expansionStateNotifier.value = _isExpanded;
+              _lastTrackId = null;
+            });
+          }
+        });
+      }
       return const SizedBox.shrink();
     }
 
     final track = audioPlayer.currentTrack!;
     final screenHeight = MediaQuery.of(context).size.height;
 
+    // Update last track reference
+    if (_lastTrackId != track) {
+      _lastTrackId = track;
+    }
+
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeOutCubic,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOutCubic,
       height: _isExpanded ? screenHeight : 80,
+      width: double.infinity,
       margin: EdgeInsets.zero,
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -94,7 +143,14 @@ class SlidingAudioPlayerState extends State<SlidingAudioPlayer> with SingleTicke
           ),
         ],
       ),
-      child: _isExpanded ? _buildExpandedPlayer(context, audioPlayer, track) : _buildMinimizedPlayer(context, audioPlayer, track),
+      child: ClipRRect(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(_isExpanded ? 0 : 12),
+        ),
+        child: _isExpanded 
+            ? _buildExpandedPlayer(context, audioPlayer, track) 
+            : _buildMinimizedPlayer(context, audioPlayer, track),
+      ),
     );
   }
 
@@ -102,8 +158,11 @@ class SlidingAudioPlayerState extends State<SlidingAudioPlayer> with SingleTicke
     return GestureDetector(
       onTap: _toggleExpanded,
       child: Container(
+        height: 80,
         padding: const EdgeInsets.symmetric(horizontal: 12.0),
+        alignment: Alignment.center,
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
           // Album Art
           ClipRRect(
@@ -111,21 +170,21 @@ class SlidingAudioPlayerState extends State<SlidingAudioPlayer> with SingleTicke
             child: track.coverImage != null
                 ? Image.network(
                     track.coverImage!,
-                    width: 64,
-                    height: 64,
+                    width: 56,
+                    height: 56,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
-                        width: 64,
-                        height: 64,
+                        width: 56,
+                        height: 56,
                         color: Colors.grey[300],
                         child: const Icon(Icons.music_note, color: Colors.grey),
                       );
                     },
                   )
                 : Container(
-                    width: 64,
-                    height: 64,
+                    width: 56,
+                    height: 56,
                     color: Colors.grey[300],
                     child: const Icon(Icons.music_note, color: Colors.grey),
                   ),
@@ -163,10 +222,14 @@ class SlidingAudioPlayerState extends State<SlidingAudioPlayer> with SingleTicke
             ),
           ),
           
+          const SizedBox(width: 4),
+          
           // Previous Button
           IconButton(
             icon: const Icon(Icons.skip_previous, color: Colors.white),
             iconSize: 24,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
             onPressed: () => audioPlayer.previous(),
           ),
           
@@ -177,6 +240,8 @@ class SlidingAudioPlayerState extends State<SlidingAudioPlayer> with SingleTicke
               size: 36,
               color: Colors.white,
             ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
             onPressed: () => audioPlayer.togglePlayPause(),
           ),
           
@@ -184,7 +249,20 @@ class SlidingAudioPlayerState extends State<SlidingAudioPlayer> with SingleTicke
           IconButton(
             icon: const Icon(Icons.skip_next, color: Colors.white),
             iconSize: 24,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
             onPressed: () => audioPlayer.next(),
+          ),
+          
+          // Close Button
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.white),
+            iconSize: 20,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: () async {
+              await audioPlayer.stop();
+            },
           ),
         ],
       ),
@@ -232,11 +310,13 @@ class SlidingAudioPlayerState extends State<SlidingAudioPlayer> with SingleTicke
                 ),
               ),
               
-              // Menu button
+              // Close button
               IconButton(
-                icon: const Icon(Icons.more_vert),
+                icon: const Icon(Icons.close),
                 color: Colors.white,
-                onPressed: () {},
+                onPressed: () async {
+                  await audioPlayer.stop();
+                },
               ),
             ],
           ),
