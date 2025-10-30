@@ -199,6 +199,37 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
                 
                 const SizedBox(height: AppSpacing.large),
                 
+                // New Podcasts Section
+                Consumer<PodcastProvider>(
+                    builder: (context, provider, child) {
+                      if (provider.isLoading) {
+                        return Padding(
+                          padding: EdgeInsets.symmetric(horizontal: AppSpacing.medium),
+                          child: Column(
+                            children: List.generate(3, (_) => Padding(
+                              padding: EdgeInsets.only(bottom: AppSpacing.small),
+                              child: const LoadingShimmer(width: double.infinity, height: 100),
+                            )),
+                          ),
+                        );
+                      }
+                      
+                      if (provider.podcasts.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      
+                      return ContentSection(
+                        title: 'New Podcasts',
+                        items: provider.podcasts.take(3).toList(),
+                        isHorizontal: false,
+                        onItemPlay: _handlePlay,
+                        onItemTap: _handleItemTap,
+                      );
+                    },
+                ),
+                
+                const SizedBox(height: AppSpacing.large),
+                
                 // Recently Played Section
                 Consumer<PodcastProvider>(
                     builder: (context, provider, child) {
@@ -225,25 +256,6 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
                       return ContentSection(
                         title: 'Recently Played',
                         items: provider.recentPodcasts,
-                        isHorizontal: false,
-                        onItemPlay: _handlePlay,
-                        onItemTap: _handleItemTap,
-                      );
-                    },
-                ),
-                
-                const SizedBox(height: AppSpacing.large),
-                
-                // New Podcasts Section
-                Consumer<PodcastProvider>(
-                    builder: (context, provider, child) {
-                      if (provider.podcasts.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
-                      
-                      return ContentSection(
-                        title: 'New Podcasts',
-                        items: provider.podcasts.take(3).toList(),
                         isHorizontal: false,
                         onItemPlay: _handlePlay,
                         onItemTap: _handleItemTap,
