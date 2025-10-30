@@ -6,6 +6,8 @@ import '../../theme/app_typography.dart';
 import '../../providers/community_provider.dart';
 import '../../widgets/shared/loading_shimmer.dart';
 import '../../widgets/shared/empty_state.dart';
+import '../../widgets/create_post_modal.dart';
+import '../../utils/format_utils.dart';
 
 class CommunityScreenMobile extends StatefulWidget {
   const CommunityScreenMobile({super.key});
@@ -16,6 +18,54 @@ class CommunityScreenMobile extends StatefulWidget {
 
 class _CommunityScreenMobileState extends State<CommunityScreenMobile> {
   String _selectedCategory = 'All';
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    print('✅ CommunityScreenMobile initState');
+    // Fetch posts on load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        context.read<CommunityProvider>().fetchPosts(refresh: true);
+      } catch (e) {
+        print('❌ CommunityScreenMobile: Error fetching posts: $e');
+      }
+    });
+    
+    // Load more on scroll
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= 
+        _scrollController.position.maxScrollExtent * 0.9) {
+      final provider = context.read<CommunityProvider>();
+      if (!provider.isLoading && provider.hasMore) {
+        provider.fetchPosts();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _handleCreatePost() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const CreatePostModal(),
+        fullscreenDialog: true,
+      ),
+    ).then((_) {
+      // Refresh posts after creating
+      context.read<CommunityProvider>().fetchPosts(refresh: true);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,12 +78,7 @@ class _CommunityScreenMobileState extends State<CommunityScreenMobile> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () {
-              // TODO: Open create post modal
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Create Post - Coming Soon')),
-              );
-            },
+            onPressed: _handleCreatePost,
           ),
         ],
       ),
@@ -62,6 +107,9 @@ class _CommunityScreenMobileState extends State<CommunityScreenMobile> {
                       setState(() {
                         _selectedCategory = category;
                       });
+                      context.read<CommunityProvider>().filterByCategory(
+                        category == 'All' ? null : category,
+                      );
                     },
                     selectedColor: AppColors.primaryMain,
                     labelStyle: TextStyle(
@@ -78,7 +126,7 @@ class _CommunityScreenMobileState extends State<CommunityScreenMobile> {
           Expanded(
             child: Consumer<CommunityProvider>(
               builder: (context, provider, child) {
-                if (provider.isLoading) {
+                if (provider.isLoading && provider.posts.isEmpty) {
                   return ListView.builder(
                     itemCount: 5,
                     padding: EdgeInsets.all(AppSpacing.medium),
@@ -91,7 +139,7 @@ class _CommunityScreenMobileState extends State<CommunityScreenMobile> {
                   );
                 }
 
-                if (provider.posts.isEmpty) {
+                if (provider.posts.isEmpty && !provider.isLoading) {
                   return const EmptyState(
                     icon: Icons.forum,
                     title: 'No Posts Yet',
@@ -99,13 +147,25 @@ class _CommunityScreenMobileState extends State<CommunityScreenMobile> {
                   );
                 }
 
-                return ListView.builder(
-                  padding: EdgeInsets.all(AppSpacing.medium),
-                  itemCount: provider.posts.length,
-                  itemBuilder: (context, index) {
-                    final post = provider.posts[index];
-                    return _buildPostCard(post);
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    await provider.fetchPosts(refresh: true);
                   },
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: EdgeInsets.all(AppSpacing.medium),
+                    itemCount: provider.posts.length + (provider.hasMore ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == provider.posts.length) {
+                        return const Padding(
+                          padding: EdgeInsets.all(AppSpacing.medium),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      final post = provider.posts[index];
+                      return _buildPostCard(post, provider);
+                    },
+                  ),
                 );
               },
             ),
@@ -115,7 +175,19 @@ class _CommunityScreenMobileState extends State<CommunityScreenMobile> {
     );
   }
 
-  Widget _buildPostCard(dynamic post) {
+  Widget _buildPostCard(dynamic post, CommunityProvider provider) {
+    // Extract post data - handle both Map and object types
+    final postId = post is Map ? post['id'] : post.id;
+    final title = post is Map ? post['title'] : post.title;
+    final content = post is Map ? post['content'] : post.content;
+    final author = post is Map ? post['author'] : post.author;
+    final createdAt = post is Map 
+        ? (post['created_at'] != null ? DateTime.parse(post['created_at']) : null)
+        : post.createdAt;
+    final likes = post is Map ? (post['likes'] ?? 0) : (post.likes ?? 0);
+    final comments = post is Map ? (post['comments'] ?? 0) : (post.comments ?? 0);
+    final isLiked = post is Map ? (post['is_liked'] ?? false) : false;
+
     return Card(
       margin: EdgeInsets.only(bottom: AppSpacing.medium),
       child: Padding(
@@ -135,13 +207,15 @@ class _CommunityScreenMobileState extends State<CommunityScreenMobile> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        post.author ?? 'Anonymous',
+                        author?.toString() ?? 'Anonymous',
                         style: AppTypography.body.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
-                        '2 hours ago',
+                        createdAt != null 
+                            ? FormatUtils.formatRelativeTime(createdAt)
+                            : 'Recently',
                         style: AppTypography.caption.copyWith(
                           color: AppColors.textTertiary,
                         ),
@@ -158,15 +232,15 @@ class _CommunityScreenMobileState extends State<CommunityScreenMobile> {
             ),
             const SizedBox(height: AppSpacing.medium),
             Text(
-              post.title ?? 'Post Title',
+              title?.toString() ?? 'Post Title',
               style: AppTypography.heading4.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
-            if (post.content != null) ...[
+            if (content != null && content.toString().isNotEmpty) ...[
               const SizedBox(height: AppSpacing.small),
               Text(
-                post.content!,
+                content.toString(),
                 style: AppTypography.body,
               ),
             ],
@@ -174,20 +248,35 @@ class _CommunityScreenMobileState extends State<CommunityScreenMobile> {
             Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.favorite_border),
-                  onPressed: () {},
+                  icon: Icon(
+                    isLiked ? Icons.favorite : Icons.favorite_border,
+                    color: isLiked ? AppColors.errorMain : null,
+                  ),
+                  onPressed: () {
+                    provider.likePost(postId);
+                  },
                 ),
-                Text('24'),
+                Text('$likes'),
                 const SizedBox(width: AppSpacing.large),
                 IconButton(
                   icon: const Icon(Icons.comment),
-                  onPressed: () {},
+                  onPressed: () {
+                    // TODO: Navigate to comments
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Comments coming soon')),
+                    );
+                  },
                 ),
-                Text('5'),
+                Text('$comments'),
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.share),
-                  onPressed: () {},
+                  onPressed: () {
+                    // TODO: Implement share
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Share coming soon')),
+                    );
+                  },
                 ),
               ],
             ),

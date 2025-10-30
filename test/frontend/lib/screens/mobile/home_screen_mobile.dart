@@ -7,6 +7,7 @@ import '../../widgets/shared/empty_state.dart';
 import '../../providers/podcast_provider.dart';
 import '../../providers/music_provider.dart';
 import '../../providers/audio_player_provider.dart';
+import '../../providers/user_provider.dart';
 import '../../models/content_item.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -28,10 +29,19 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
   @override
   void initState() {
     super.initState();
+    print('✅ HomeScreenMobile initState');
     // Fetch data on load
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<PodcastProvider>().fetchPodcasts();
-      context.read<MusicProvider>().fetchTracks();
+      if (!mounted) return;
+      try {
+        print('✅ HomeScreenMobile: Fetching data...');
+        context.read<PodcastProvider>().fetchPodcasts();
+        context.read<MusicProvider>().fetchTracks();
+        context.read<UserProvider>().fetchUser();
+        print('✅ HomeScreenMobile: Data fetch initiated');
+      } catch (e) {
+        print('❌ HomeScreenMobile: Error initializing providers: $e');
+      }
     });
   }
 
@@ -46,8 +56,9 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
     );
   }
 
-  String _getGreeting() {
-    return FormatUtils.getGreeting();
+  String _getGreeting(Map<String, dynamic>? user) {
+    final username = user?['name'] ?? 'Guest';
+    return 'Hey $username';
   }
 
   void _handlePlay(ContentItem item) {
@@ -107,16 +118,20 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                                _getGreeting(),
-                                style: AppTypography.heading3.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                        Consumer<UserProvider>(
+                          builder: (context, userProvider, child) {
+                            return Text(
+                              _getGreeting(userProvider.user),
+                              style: AppTypography.heading3.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
                               ),
+                            );
+                          },
+                        ),
                               const SizedBox(height: AppSpacing.small),
                               Text(
-                                'Welcome to Christ New Tabernacle',
+                                'welcome back',
                                 style: AppTypography.heading4.copyWith(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,
@@ -124,62 +139,10 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
                               ),
                               const SizedBox(height: AppSpacing.medium),
                               Text(
-                                'Experience God\'s word through engaging podcasts, Bible stories, and spiritual guidance. Join our community of believers in Christ.',
+                                'Join AI podcast',
                                 style: AppTypography.bodySmall.copyWith(
                                   color: Colors.white.withOpacity(0.9),
                                 ),
-                              ),
-                              const SizedBox(height: AppSpacing.large),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      onPressed: () {},
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.white,
-                                        foregroundColor: AppColors.primaryMain,
-                                        padding: EdgeInsets.symmetric(
-                                          vertical: AppSpacing.small,
-                                          horizontal: AppSpacing.medium,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        'Start Listening',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSpacing.medium),
-                                  Expanded(
-                                    child: OutlinedButton(
-                                      onPressed: () {},
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: Colors.white,
-                                        side: const BorderSide(color: Colors.white, width: 2),
-                                        padding: EdgeInsets.symmetric(
-                                          vertical: AppSpacing.small,
-                                          horizontal: AppSpacing.medium,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        'Join Prayer',
-                          style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
                               ),
                             ],
                           ),

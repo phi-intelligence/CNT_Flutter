@@ -36,9 +36,10 @@ class _MobileNavigationLayoutState extends State<MobileNavigationLayout> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 400;
+    // Account for SafeArea padding - reduce by a few pixels to prevent overflow
     final tabBarHeight = PlatformUtils.isIOS
-        ? (isSmallScreen ? 90 : 85)
-        : 60;
+        ? (isSmallScreen ? 98 : 93)
+        : 73;
 
     return PopScope(
       canPop: false,
@@ -101,25 +102,26 @@ class _MobileNavigationLayoutState extends State<MobileNavigationLayout> {
                 // 1. No track playing, OR
                 // 2. Track playing but player is minimized (not expanded)
                 final shouldShowNav = audioPlayer.currentTrack == null || !isExpanded;
-                return shouldShowNav ? Container(
-        height: tabBarHeight.toDouble(),
-        decoration: BoxDecoration(
-          color: AppColors.backgroundPrimary,
-          border: Border(
-            top: BorderSide(
-              color: AppColors.borderPrimary,
-              width: 1,
+                return shouldShowNav ? SafeArea(
+          top: false,
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.backgroundPrimary,
+              border: const Border(
+                top: BorderSide(
+                  color: AppColors.borderPrimary,
+                  width: 1,
+                ),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  offset: const Offset(0, -2),
+                  blurRadius: 4,
+                ),
+              ],
             ),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              offset: const Offset(0, -2),
-              blurRadius: 4,
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
+            child: BottomNavigationBar(
               currentIndex: _currentIndex,
         onTap: (index) {
           setState(() {
@@ -132,15 +134,15 @@ class _MobileNavigationLayoutState extends State<MobileNavigationLayout> {
             selectedItemColor: AppColors.primaryMain,
             unselectedItemColor: AppColors.textSecondary,
             selectedLabelStyle: TextStyle(
-              fontSize: isSmallScreen ? 9 : (PlatformUtils.isIOS ? 11 : 10),
+              fontSize: isSmallScreen ? 8 : (PlatformUtils.isIOS ? 10 : 9),
               fontWeight: FontWeight.w600,
             ),
             unselectedLabelStyle: TextStyle(
-              fontSize: isSmallScreen ? 9 : (PlatformUtils.isIOS ? 11 : 10),
+              fontSize: isSmallScreen ? 8 : (PlatformUtils.isIOS ? 10 : 9),
               fontWeight: FontWeight.w500,
             ),
-            iconSize: PlatformUtils.isIOS ? 28 : 24,
-            items: [
+            iconSize: PlatformUtils.isIOS ? 26 : 22,
+            items: const [
           BottomNavigationBarItem(
                 icon: Icon(Icons.home_rounded),
                 activeIcon: Icon(Icons.home_rounded),
@@ -167,6 +169,7 @@ class _MobileNavigationLayoutState extends State<MobileNavigationLayout> {
             label: 'Profile',
           ),
         ],
+            ),
           ),
         ) : const SizedBox.shrink();
               },
