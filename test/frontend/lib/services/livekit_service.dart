@@ -1,4 +1,12 @@
-// import 'package:livekit_client/livekit_client.dart'; // Temporarily disabled
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+class LiveKitJoinResponse {
+  final String token;
+  final String url;
+  final String roomName;
+  LiveKitJoinResponse({required this.token, required this.url, required this.roomName});
+}
 
 /// LiveKit Service for live streaming functionality
 /// Handles room connection, audio/video tracks, and streaming
@@ -7,25 +15,45 @@ class LiveKitService {
   factory LiveKitService() => _instance;
   LiveKitService._internal();
 
+  // Backend API base URL; emulator-safe default, override with --dart-define
+  static String apiBase = const String.fromEnvironment(
+    'API_BASE',
+    defaultValue: 'http://10.0.2.2:8000/api/v1',
+  );
+
   dynamic _currentRoom;
   dynamic _localParticipant;
   
   dynamic get currentRoom => _currentRoom;
   dynamic get localParticipant => _localParticipant;
 
-  /// Connect to a LiveKit room
-  Future<bool> connectToRoom({
-    required String url,
-    required String token,
-    String? participantName,
+  Future<LiveKitJoinResponse> fetchTokenForMeeting({
+    required int streamOrMeetingId,
+    required String userIdentity,
+    bool isHost = false,
+    String? apiBaseParam,
   }) async {
+    // Use apiBase param if provided, else static default
+    String apiUrl = apiBaseParam ?? apiBase;
+    final url = Uri.parse('$apiUrl/streams/$streamOrMeetingId/join');
     try {
-      // Connect to room (placeholder for now - actual implementation depends on LiveKit SDK version)
-      // This will be implemented when LiveKit setup is complete
-      return true;
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'identity': userIdentity, 'is_host': isHost}),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return LiveKitJoinResponse(
+          token: data['token'],
+          url: data['url'],
+          roomName: data['room_name'],
+        );
+      } else {
+        throw Exception('Failed to fetch LiveKit token: HTTP ${response.statusCode} ${response.body}');
+      }
     } catch (e) {
-      print('Error connecting to LiveKit room: $e');
-      return false;
+      throw Exception('Network error: $e');
     }
   }
 
@@ -65,17 +93,19 @@ class LiveKitService {
   }
 
   /// Check if camera is enabled
+  // SDK requires method calls: isCameraEnabled()
   bool get isCameraEnabled {
     return _localParticipant?.isCameraEnabled() ?? false;
   }
 
   /// Check if microphone is enabled
+  // SDK requires method calls: isMicrophoneEnabled()
   bool get isMicrophoneEnabled {
     return _localParticipant?.isMicrophoneEnabled() ?? false;
   }
 
   /// Get remote participants
-  List<RemoteParticipant> get remoteParticipants {
+  List<dynamic> get remoteParticipants {
     return _currentRoom?.remoteParticipants.values.toList() ?? [];
   }
 

@@ -44,8 +44,8 @@ dependencies:
   camera: ^0.10.5
   
   # Connectivity
-  connectivity_plus: ^5.0.2
-  device_info_plus: ^9.1.1
+  connectivity_plus: ^6.1.5
+  device_info_plus: ^11.3.3
   
   # Permissions
   permission_handler: ^11.1.0
@@ -55,6 +55,9 @@ dependencies:
   # Utils
   intl: ^0.19.0
   uuid: ^4.2.1
+  flutter_webrtc: 1.2.0
+  livekit_client: 2.5.3
+  # flutter_livekit_webrtc: ^0.12.1+hotfix.3 # Only if you use it
 
 dev_dependencies:
   flutter_test:

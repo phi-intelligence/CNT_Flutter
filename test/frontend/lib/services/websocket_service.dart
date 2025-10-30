@@ -1,12 +1,11 @@
-import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:convert';
-import '../utils/platform_helper.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class WebSocketService {
   static final WebSocketService _instance = WebSocketService._internal();
   factory WebSocketService() => _instance;
   
-  WebSocketChannel? _channel;
+  IO.Socket? _socket;
   bool _isConnected = false;
   
   WebSocketService._internal();
@@ -15,94 +14,57 @@ class WebSocketService {
   
   Future<void> connect() async {
     if (_isConnected) return;
-    
     try {
-      final baseUrl = PlatformHelper.getWebSocketUrl();
-      final uri = Uri.parse('$baseUrl/ws');
-      
-      // WebSocketChannel.connect() is lazy - it doesn't connect until stream is accessed
-      // Create the channel but don't set connected yet
-      WebSocketChannel? channel;
-      try {
-        channel = WebSocketChannel.connect(uri);
-      } catch (e) {
-        print('Failed to create WebSocket channel: $e');
-        _isConnected = false;
-        _channel = null;
-        return;
-      }
-      
-      // Try to set up listeners with error handling
-      // Accessing the stream may trigger immediate connection and throw synchronously
-      try {
-        // Set up listener - this may trigger connection immediately
-        final subscription = channel.stream.listen(
-          (message) {
-            try {
-              if (message is String) {
-                final data = json.decode(message);
-                _handleMessage(data);
-              }
-            } catch (e) {
-              print('Error parsing WebSocket message: $e');
-            }
-          },
-          onError: (error) {
-            print('WebSocket stream error: $error');
-            _isConnected = false;
-            _channel = null;
-          },
-          onDone: () {
-            print('WebSocket disconnected');
-            _isConnected = false;
-            _channel = null;
-          },
-          cancelOnError: true,
-        );
-        
-        // Store subscription to prevent it from being garbage collected
-        // Only set connected and channel after listener is successfully set up
-        _channel = channel;
+      final url = 'http://10.0.2.2:8000';
+      _socket = IO.io(url, <String, dynamic>{
+        'path': '/socket.io/',
+        'transports': ['websocket'],
+        'autoConnect': true,
+        'forceNew': true,
+      });
+
+      _socket!.on('connect', (_) {
         _isConnected = true;
-      } catch (e, stackTrace) {
-        // If listener setup fails (connection error), clean up
-        print('Failed to set up WebSocket listener: $e');
-        print('Stack trace: $stackTrace');
-        try {
-          channel.sink.close();
-        } catch (_) {
-          // Ignore close errors
-        }
+      });
+      _socket!.on('disconnect', (_) {
         _isConnected = false;
-        _channel = null;
-      }
-    } catch (e) {
-      // Catch any other connection errors
-      print('Failed to connect WebSocket: $e');
+      });
+      _socket!.on('message', (data) {
+        try {
+          if (data is String) {
+            _handleMessage(json.decode(data));
+          } else if (data is Map<String, dynamic>) {
+            _handleMessage(data);
+          }
+        } catch (_) {}
+      });
+      _socket!.on('error', (_) {
+        _isConnected = false;
+      });
+    } catch (_) {
       _isConnected = false;
-      _channel = null;
-      // Don't rethrow - this is non-critical
     }
   }
   
   void disconnect() {
-    _channel?.sink.close();
+    _socket?.disconnect();
+    _socket?.dispose();
     _isConnected = false;
-    _channel = null;
+    _socket = null;
   }
   
   void send(Map<String, dynamic> data) {
-    if (!_isConnected || _channel == null) {
+    if (!_isConnected || _socket == null) {
       print('WebSocket not connected - message not sent');
       return;
     }
     
     try {
-      _channel!.sink.add(json.encode(data));
+      _socket!.emit('message', data);
     } catch (e) {
       print('Error sending WebSocket message: $e');
       _isConnected = false;
-      _channel = null;
+      _socket = null;
     }
   }
   
@@ -114,19 +76,8 @@ class WebSocketService {
   
   // Stream listener for specific events
   Stream<String> listenToEvent(String eventType) {
-    if (_channel == null) return const Stream.empty();
-    
-    return _channel!.stream.map((message) {
-      try {
-        final data = json.decode(message);
-        if (data['type'] == eventType) {
-          return message as String;
-        }
-        return '';
-      } catch (e) {
-        return '';
-      }
-    }).where((message) => message.isNotEmpty);
+    if (_socket == null) return const Stream.empty();
+    return const Stream.empty();
   }
 }
 
