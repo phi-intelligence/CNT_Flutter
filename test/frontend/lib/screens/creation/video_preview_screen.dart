@@ -40,7 +40,18 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
 
   Future<void> _initializePlayer() async {
     try {
-      _controller = VideoPlayerController.file(File(widget.videoUri));
+      // Verify file exists before initializing player
+      final file = File(widget.videoUri);
+      if (!await file.exists()) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'Video file not found at path: ${widget.videoUri}';
+          _isInitializing = false;
+        });
+        return;
+      }
+
+      _controller = VideoPlayerController.file(file);
       await _controller!.initialize();
       _controller!.addListener(() {
         if (mounted) {
@@ -51,9 +62,10 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
         _isInitializing = false;
       });
     } catch (e) {
+      print('Error initializing video player: $e');
       setState(() {
         _hasError = true;
-        _errorMessage = e.toString();
+        _errorMessage = 'Failed to load video: ${e.toString()}';
         _isInitializing = false;
       });
     }
@@ -169,10 +181,23 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
 
   String _formatFileSize(int bytes) {
     if (bytes == 0) return '0 Bytes';
+    if (bytes < 1024) return '$bytes Bytes';
+    
     final k = 1024;
     final sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    final i = (bytes / k).floor();
-    return '${(bytes / (k * i)).toStringAsFixed(2)} ${sizes[i]}';
+    int i = 0;
+    double size = bytes.toDouble();
+    
+    // Calculate the correct unit index
+    while (size >= k && i < sizes.length - 1) {
+      size /= k;
+      i++;
+    }
+    
+    // Clamp index to valid range
+    i = i.clamp(0, sizes.length - 1);
+    
+    return '${size.toStringAsFixed(2)} ${sizes[i]}';
   }
 
   @override

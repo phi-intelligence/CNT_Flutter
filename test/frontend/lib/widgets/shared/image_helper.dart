@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../services/api_service.dart';
 
 /// Helper class to create ImageProvider that handles both network and asset images
 class ImageHelper {
   /// Creates an appropriate ImageProvider based on the image URL/path
   /// - If it starts with 'http://' or 'https://', uses NetworkImage
   /// - If it starts with 'assets/', uses AssetImage
-  /// - Otherwise, treats it as a network URL
+  /// - Otherwise, treats it as a relative path and constructs full URL with media base URL
   static ImageProvider getImageProvider(String? imageUrl, {String? fallbackAsset}) {
     if (imageUrl == null || imageUrl.isEmpty) {
       if (fallbackAsset != null) {
@@ -25,8 +26,11 @@ class ImageHelper {
       return NetworkImage(imageUrl);
     }
     
-    // Default to network (for relative paths from backend)
-    return NetworkImage(imageUrl);
+    // For relative paths from backend, construct full URL using media base URL
+    // Remove leading slash if present
+    final cleanPath = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl;
+    final fullUrl = '${ApiService.mediaBaseUrl}/media/$cleanPath';
+    return NetworkImage(fullUrl);
   }
   
   /// Get fallback asset image based on index

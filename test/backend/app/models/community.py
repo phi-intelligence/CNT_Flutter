@@ -20,6 +20,7 @@ class CommunityPost(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String, nullable=False)
     content = Column(Text, nullable=False)
+    image_url = Column(String, nullable=True)  # Photo/image URL for Instagram-like posts
     category = Column(String, nullable=False)  # testimony, prayer_request, question, etc.
     likes_count = Column(Integer, default=0)
     comments_count = Column(Integer, default=0)

@@ -168,7 +168,7 @@ class _AudioRecordingScreenState extends State<AudioRecordingScreen> {
   String _formatDuration(int seconds) {
     final mins = seconds ~/ 60;
     final secs = seconds % 60;
-    return '${mins.toString().padLeft(1, '0')}:${secs.toString().padLeft(2, '0')}';
+    return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
   }
 
   @override

@@ -251,18 +251,22 @@ class ApiService {
     }
   }
 
-  /// Like a post
-  Future<bool> likePost(int postId) async {
+  /// Like a post (toggles like/unlike)
+  Future<Map<String, dynamic>?> likePost(int postId) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/community/posts/$postId/like'),
         headers: {'Content-Type': 'application/json'},
       ).timeout(const Duration(seconds: 10));
       
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data as Map<String, dynamic>;
+      }
+      return null;
     } catch (e) {
       print('Error liking post: $e');
-      return false;
+      return null;
     }
   }
 

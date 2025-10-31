@@ -50,8 +50,16 @@ class _MobileNavigationLayoutState extends State<MobileNavigationLayout> {
           if (playerState != null && playerState.isExpanded) {
             // Minimize player instead of exiting
             playerState.minimizePlayer();
+            return; // Don't navigate or exit, just minimize player
+          }
+          
+          // If not on home page (index 0), navigate to home
+          if (_currentIndex != 0) {
+            setState(() {
+              _currentIndex = 0;
+            });
           } else {
-            // Exit app when player is minimized or no track playing
+            // Already on home page, exit the app
             SystemNavigator.pop();
           }
         }

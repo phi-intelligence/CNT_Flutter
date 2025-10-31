@@ -1,20 +1,89 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/podcast_provider.dart';
+import '../services/api_service.dart';
+import '../models/api_models.dart';
+import '../models/content_item.dart';
 
-class PodcastsScreen extends StatelessWidget {
+class PodcastsScreen extends StatefulWidget {
   const PodcastsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final podcastProvider = Provider.of<PodcastProvider>(context);
+  State<PodcastsScreen> createState() => _PodcastsScreenState();
+}
+
+class _PodcastsScreenState extends State<PodcastsScreen> {
+  final ApiService _api = ApiService();
+  List<ContentItem> _podcasts = [];
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPodcasts();
+  }
+
+  Future<void> _fetchPodcasts() async {
+    if (_isLoading) return;
     
-    // Fetch podcasts on first load
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (podcastProvider.podcasts.isEmpty && !podcastProvider.isLoading) {
-        podcastProvider.fetchPodcasts();
-      }
+    setState(() {
+      _isLoading = true;
+      _error = null;
     });
+
+    try {
+      final podcastsData = await _api.getPodcasts();
+      
+      _podcasts = podcastsData.map((podcast) {
+        final audioUrl = podcast.audioUrl != null && podcast.audioUrl!.isNotEmpty
+            ? _api.getMediaUrl(podcast.audioUrl!)
+            : null;
+        
+        return ContentItem(
+          id: podcast.id.toString(),
+          title: podcast.title,
+          creator: 'Christ Tabernacle',
+          description: podcast.description,
+          coverImage: podcast.coverImage != null 
+            ? _api.getMediaUrl(podcast.coverImage!) 
+            : null,
+          audioUrl: audioUrl,
+          videoUrl: null,
+          duration: podcast.duration != null 
+            ? Duration(seconds: podcast.duration!)
+            : null,
+          category: _getCategoryName(podcast.categoryId),
+          plays: podcast.playsCount,
+          createdAt: podcast.createdAt,
+        );
+      }).where((p) => p.audioUrl != null && p.audioUrl!.isNotEmpty).toList();
+      
+      _error = null;
+    } catch (e) {
+      _error = 'Failed to load podcasts: $e';
+      print('Error fetching podcasts: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _getCategoryName(int? categoryId) {
+    switch (categoryId) {
+      case 1: return 'Sermons';
+      case 2: return 'Bible Study';
+      case 3: return 'Devotionals';
+      case 4: return 'Prayer';
+      case 5: return 'Worship';
+      case 6: return 'Gospel';
+      default: return 'Podcast';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     
     return Scaffold(
       appBar: AppBar(
@@ -53,27 +122,27 @@ class PodcastsScreen extends StatelessWidget {
             
             // Podcasts Grid
             Expanded(
-              child: podcastProvider.isLoading
+              child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : podcastProvider.error != null
+                  : _error != null
                       ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                podcastProvider.error!,
+                                _error!,
                                 style: const TextStyle(color: Colors.red),
                                 textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 16),
                               ElevatedButton(
-                                onPressed: () => podcastProvider.fetchPodcasts(),
+                                onPressed: _fetchPodcasts,
                                 child: const Text('Retry'),
                               ),
                             ],
                           ),
                         )
-                      : podcastProvider.podcasts.isEmpty
+                      : _podcasts.isEmpty
                           ? const Center(child: Text('No podcasts available'))
                           : GridView.builder(
                               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -82,13 +151,13 @@ class PodcastsScreen extends StatelessWidget {
                                 crossAxisSpacing: 16,
                                 mainAxisSpacing: 16,
                               ),
-                              itemCount: podcastProvider.podcasts.length,
+                              itemCount: _podcasts.length,
                               itemBuilder: (context, index) {
-                                final podcast = podcastProvider.podcasts[index];
+                                final podcast = _podcasts[index];
                                 return _PodcastCard(
                                   title: podcast.title,
-                                  creator: podcast.creator,
-                                  category: podcast.category,
+                                  creator: podcast.creator ?? 'Unknown',
+                                  category: podcast.category ?? 'Podcast',
                                 );
                               },
                             ),

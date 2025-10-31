@@ -7,6 +7,7 @@ import '../../providers/community_provider.dart';
 import '../../widgets/shared/loading_shimmer.dart';
 import '../../widgets/shared/empty_state.dart';
 import '../../widgets/create_post_modal.dart';
+import '../../widgets/community/instagram_post_card.dart';
 import '../../utils/format_utils.dart';
 
 class CommunityScreenMobile extends StatefulWidget {
@@ -153,7 +154,7 @@ class _CommunityScreenMobileState extends State<CommunityScreenMobile> {
                   },
                   child: ListView.builder(
                     controller: _scrollController,
-                    padding: EdgeInsets.all(AppSpacing.medium),
+                    padding: EdgeInsets.zero,
                     itemCount: provider.posts.length + (provider.hasMore ? 1 : 0),
                     itemBuilder: (context, index) {
                       if (index == provider.posts.length) {
@@ -163,7 +164,53 @@ class _CommunityScreenMobileState extends State<CommunityScreenMobile> {
                         );
                       }
                       final post = provider.posts[index];
-                      return _buildPostCard(post, provider);
+                      // Convert post to Map if needed
+                      final postMap = post is Map<String, dynamic>
+                          ? post
+                          : {
+                              'id': post.id,
+                              'user_id': post.user_id,
+                              'user_name': post.user_name ?? 'User',
+                              'user_avatar': post.user_avatar,
+                              'title': post.title,
+                              'content': post.content,
+                              'image_url': post.image_url,
+                              'category': post.category,
+                              'likes_count': post.likes_count,
+                              'comments_count': post.comments_count,
+                              'is_liked': post.is_liked,
+                              'created_at': post.created_at.toString(),
+                            };
+                      
+                      return InstagramPostCard(
+                        post: postMap,
+                        onLike: () {
+                          final postId = postMap['id'];
+                          if (postId != null) {
+                            final id = postId is int 
+                                ? postId 
+                                : int.tryParse(postId.toString());
+                            if (id != null) {
+                              provider.likePost(id);
+                            }
+                          }
+                        },
+                        onComment: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Comments coming soon')),
+                          );
+                        },
+                        onShare: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Share coming soon')),
+                          );
+                        },
+                        onBookmark: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Bookmark coming soon')),
+                          );
+                        },
+                      );
                     },
                   ),
                 );
@@ -175,117 +222,4 @@ class _CommunityScreenMobileState extends State<CommunityScreenMobile> {
     );
   }
 
-  Widget _buildPostCard(dynamic post, CommunityProvider provider) {
-    // Extract post data - handle both Map and object types
-    final postId = post is Map ? post['id'] : post.id;
-    final title = post is Map ? post['title'] : post.title;
-    final content = post is Map ? post['content'] : post.content;
-    final author = post is Map ? post['author'] : post.author;
-    final createdAt = post is Map 
-        ? (post['created_at'] != null ? DateTime.parse(post['created_at']) : null)
-        : post.createdAt;
-    final likes = post is Map ? (post['likes'] ?? 0) : (post.likes ?? 0);
-    final comments = post is Map ? (post['comments'] ?? 0) : (post.comments ?? 0);
-    final isLiked = post is Map ? (post['is_liked'] ?? false) : false;
-
-    return Card(
-      margin: EdgeInsets.only(bottom: AppSpacing.medium),
-      child: Padding(
-        padding: EdgeInsets.all(AppSpacing.medium),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: AppColors.primaryMain,
-                  child: const Icon(Icons.person, color: Colors.white),
-                ),
-                const SizedBox(width: AppSpacing.small),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        author?.toString() ?? 'Anonymous',
-                        style: AppTypography.body.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        createdAt != null 
-                            ? FormatUtils.formatRelativeTime(createdAt)
-                            : 'Recently',
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.more_vert),
-                  color: AppColors.textSecondary,
-                  onPressed: () {},
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.medium),
-            Text(
-              title?.toString() ?? 'Post Title',
-              style: AppTypography.heading4.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (content != null && content.toString().isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.small),
-              Text(
-                content.toString(),
-                style: AppTypography.body,
-              ),
-            ],
-            const SizedBox(height: AppSpacing.medium),
-            Row(
-              children: [
-                IconButton(
-                  icon: Icon(
-                    isLiked ? Icons.favorite : Icons.favorite_border,
-                    color: isLiked ? AppColors.errorMain : null,
-                  ),
-                  onPressed: () {
-                    final id = postId is int ? postId : (postId is String ? int.tryParse(postId) : null);
-                    if (id != null) {
-                      provider.likePost(id);
-                    }
-                  },
-                ),
-                Text('$likes'),
-                const SizedBox(width: AppSpacing.large),
-                IconButton(
-                  icon: const Icon(Icons.comment),
-                  onPressed: () {
-                    // TODO: Navigate to comments
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Comments coming soon')),
-                    );
-                  },
-                ),
-                Text('$comments'),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.share),
-                  onPressed: () {
-                    // TODO: Implement share
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Share coming soon')),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

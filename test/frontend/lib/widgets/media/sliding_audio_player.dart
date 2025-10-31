@@ -4,6 +4,8 @@ import '../../providers/audio_player_provider.dart';
 import '../../models/content_item.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/audio/vinyl_disc.dart';
+import '../../screens/audio/audio_player_full_screen_new.dart';
+import '../../widgets/shared/image_helper.dart';
 
 /// Sliding Audio Player - Slides up from bottom with vinyl disc
 class SlidingAudioPlayer extends StatefulWidget {
@@ -156,69 +158,105 @@ class SlidingAudioPlayerState extends State<SlidingAudioPlayer> with SingleTicke
 
   Widget _buildMinimizedPlayer(BuildContext context, AudioPlayerState audioPlayer, track) {
     return GestureDetector(
-      onTap: _toggleExpanded,
+      onTap: () {
+        // Navigate directly to full-screen player
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const AudioPlayerFullScreenNew(),
+            fullscreenDialog: true,
+          ),
+        );
+      },
       child: Container(
         height: 80,
-        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
         alignment: Alignment.center,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.max,
           children: [
-          // Album Art
+          // Album Art - Using ImageHelper for consistency with homepage cards
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: track.coverImage != null
-                ? Image.network(
-                    track.coverImage!,
+                ? Image(
+                    image: ImageHelper.getImageProvider(
+                      track.coverImage,
+                      fallbackAsset: ImageHelper.getFallbackAsset(
+                        int.tryParse(track.id) ?? 0,
+                      ),
+                    ),
                     width: 56,
                     height: 56,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
+                    errorBuilder: (context, error, stackTrace) => Image.asset(
+                      ImageHelper.getFallbackAsset(
+                        int.tryParse(track.id) ?? 0,
+                      ),
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
                         width: 56,
                         height: 56,
                         color: Colors.grey[300],
                         child: const Icon(Icons.music_note, color: Colors.grey),
-                      );
-                    },
+                      ),
+                    ),
                   )
-                : Container(
+                : Image.asset(
+                    ImageHelper.getFallbackAsset(
+                      int.tryParse(track.id) ?? 0,
+                    ),
                     width: 56,
                     height: 56,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.music_note, color: Colors.grey),
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 56,
+                      height: 56,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.music_note, color: Colors.grey),
+                    ),
                   ),
           ),
           const SizedBox(width: 12),
           
           // Track Info
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  track.title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+            child: SizedBox(
+              height: 56, // Match album art height to prevent overflow
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      track.title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  track.creator,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.8),
+                  const SizedBox(height: 2),
+                  Flexible(
+                    child: Text(
+                      track.creator,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.8),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           
@@ -271,226 +309,32 @@ class SlidingAudioPlayerState extends State<SlidingAudioPlayer> with SingleTicke
   }
 
   Widget _buildExpandedPlayer(BuildContext context, AudioPlayerState audioPlayer, track) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Header
-        Container(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Minimize button
-              IconButton(
-                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
-                onPressed: _toggleExpanded,
-              ),
-              
-              // Donate button
-              Flexible(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Thank you for your support!')),
-                    );
-                  },
-                  icon: const Icon(Icons.favorite, size: 20),
-                  label: const Text('Donate'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black.withOpacity(0.3),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-              ),
-              
-              // Close button
-              IconButton(
-                icon: const Icon(Icons.close),
-                color: Colors.white,
-                onPressed: () async {
-                  await audioPlayer.stop();
-                },
-              ),
-            ],
+    // This should not be called anymore - navigation happens from minimized player
+    // But keep it as fallback just in case
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_isExpanded && mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const AudioPlayerFullScreenNew(),
+            fullscreenDialog: true,
           ),
-        ),
-
-        // Vinyl Disc - Center of Screen
-        Expanded(
-          child: Center(
-            child: VinylDisc(
-              size: 220,
-              artist: track.creator,
-              isPlaying: audioPlayer.isPlaying,
-            ),
-          ),
-        ),
-
-        // Track Info
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                track.title,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                track.creator,
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.white.withOpacity(0.9),
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                track.description ?? '',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white.withOpacity(0.7),
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
-
-        // Progress Bar
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Slider(
-                value: audioPlayer.duration.inSeconds > 0
-                    ? audioPlayer.position.inSeconds / audioPlayer.duration.inSeconds
-                    : 0.0,
-                min: 0.0,
-                max: 1.0,
-                activeColor: Colors.white,
-                inactiveColor: Colors.white.withOpacity(0.3),
-                onChanged: (value) {
-                  final newPosition = Duration(
-                    seconds: (value * audioPlayer.duration.inSeconds).toInt(),
-                  );
-                  audioPlayer.seek(newPosition);
-                },
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _formatDuration(audioPlayer.position),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                    ),
-                  ),
-                  Text(
-                    _formatDuration(audioPlayer.duration),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
-
-        // Controls
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Shuffle
-              IconButton(
-                icon: Icon(
-                  Icons.shuffle,
-                  color: Colors.white.withOpacity(0.7),
-                ),
-                iconSize: 24,
-                onPressed: () {},
-              ),
-
-              // Previous
-              IconButton(
-                icon: const Icon(Icons.skip_previous, color: Colors.white),
-                iconSize: 32,
-                onPressed: () => audioPlayer.previous(),
-              ),
-
-              // Play/Pause
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.2),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.4),
-                    width: 2,
-                  ),
-                ),
-                child: IconButton(
-                  icon: Icon(
-                    audioPlayer.isPlaying ? Icons.pause : Icons.play_arrow,
-                    color: Colors.white,
-                    size: 48,
-                  ),
-                  onPressed: () => audioPlayer.togglePlayPause(),
-                ),
-              ),
-
-              // Next
-              IconButton(
-                icon: const Icon(Icons.skip_next, color: Colors.white),
-                iconSize: 32,
-                onPressed: () => audioPlayer.next(),
-              ),
-
-              // Repeat
-              IconButton(
-                icon: Icon(
-                  Icons.repeat,
-                  color: Colors.white.withOpacity(0.7),
-                ),
-                iconSize: 24,
-                onPressed: () {},
-              ),
-            ],
-          ),
-        ),
-
-        // Bottom spacing
-        const SizedBox(height: 32),
-      ],
+        ).then((_) {
+          if (mounted && _isExpanded) {
+            setState(() {
+              _isExpanded = false;
+              expansionStateNotifier.value = _isExpanded;
+            });
+          }
+        });
+      }
+    });
+    
+    return Container(
+      color: AppColors.backgroundPrimary,
+      child: const Center(
+        child: CircularProgressIndicator(color: AppColors.primaryMain),
+      ),
     );
   }
 }

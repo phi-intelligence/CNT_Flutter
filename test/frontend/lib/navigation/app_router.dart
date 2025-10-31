@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../utils/platform_helper.dart';
 import '../providers/app_state.dart';
-import '../providers/podcast_provider.dart';
 import '../providers/music_provider.dart';
 import '../providers/community_provider.dart';
 import '../providers/audio_player_provider.dart';
@@ -56,7 +55,6 @@ class _AppRouterState extends State<AppRouter> {
       return MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => AppState()),
-          ChangeNotifierProvider(create: (_) => PodcastProvider()),
           ChangeNotifierProvider(create: (_) => MusicProvider()),
           ChangeNotifierProvider(create: (_) => CommunityProvider()),
           ChangeNotifierProvider(create: (_) => AudioPlayerState()),
@@ -78,7 +76,6 @@ class _AppRouterState extends State<AppRouter> {
       return MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => AppState()),
-          ChangeNotifierProvider(create: (_) => PodcastProvider()),
           ChangeNotifierProvider(create: (_) => MusicProvider()),
           ChangeNotifierProvider(create: (_) => CommunityProvider()),
           ChangeNotifierProvider(create: (_) => AudioPlayerState()),

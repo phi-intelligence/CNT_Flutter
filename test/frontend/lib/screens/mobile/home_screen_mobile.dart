@@ -4,11 +4,12 @@ import '../../widgets/voice/voice_bubble.dart';
 import '../../widgets/shared/content_section.dart';
 import '../../widgets/shared/loading_shimmer.dart';
 import '../../widgets/shared/empty_state.dart';
-import '../../providers/podcast_provider.dart';
+import '../../services/api_service.dart';
 import '../../providers/music_provider.dart';
 import '../../providers/audio_player_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../models/content_item.dart';
+import '../../models/api_models.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
@@ -26,6 +27,12 @@ class HomeScreenMobile extends StatefulWidget {
 
 class _HomeScreenMobileState extends State<HomeScreenMobile> {
   bool _isVoiceActive = false;
+  final ApiService _api = ApiService();
+  
+  List<ContentItem> _audioPodcasts = [];
+  List<ContentItem> _videoPodcasts = [];
+  List<ContentItem> _recentPodcasts = [];
+  bool _isLoadingPodcasts = false;
 
   @override
   void initState() {
@@ -36,7 +43,7 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
       if (!mounted) return;
       try {
         print('✅ HomeScreenMobile: Fetching data...');
-        context.read<PodcastProvider>().fetchPodcasts();
+        _fetchPodcasts();
         context.read<MusicProvider>().fetchTracks();
         context.read<UserProvider>().fetchUser();
         print('✅ HomeScreenMobile: Data fetch initiated');
@@ -44,6 +51,85 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
         print('❌ HomeScreenMobile: Error initializing providers: $e');
       }
     });
+  }
+
+  Future<void> _fetchPodcasts() async {
+    if (_isLoadingPodcasts) return;
+    
+    setState(() {
+      _isLoadingPodcasts = true;
+    });
+
+    try {
+      final podcastsData = await _api.getPodcasts();
+      
+      // Convert Podcast models to ContentItem models
+      final allContentItems = podcastsData.map((podcast) {
+        final audioUrl = podcast.audioUrl != null && podcast.audioUrl!.isNotEmpty
+            ? _api.getMediaUrl(podcast.audioUrl!)
+            : null;
+        final videoUrl = podcast.videoUrl != null && podcast.videoUrl!.isNotEmpty
+            ? _api.getMediaUrl(podcast.videoUrl!)
+            : null;
+        
+        return ContentItem(
+          id: podcast.id.toString(),
+          title: podcast.title,
+          creator: 'Christ Tabernacle',
+          description: podcast.description,
+          coverImage: podcast.coverImage != null 
+            ? _api.getMediaUrl(podcast.coverImage!) 
+            : null,
+          audioUrl: audioUrl,
+          videoUrl: videoUrl,
+          duration: podcast.duration != null 
+            ? Duration(seconds: podcast.duration!)
+            : null,
+          category: _getCategoryName(podcast.categoryId),
+          plays: podcast.playsCount,
+          createdAt: podcast.createdAt,
+        );
+      }).toList();
+      
+      // Separate audio and video podcasts
+      _audioPodcasts = allContentItems.where((p) => 
+        p.audioUrl != null && 
+        p.audioUrl!.isNotEmpty && 
+        (p.videoUrl == null || p.videoUrl!.isEmpty)
+      ).toList();
+      
+      _videoPodcasts = allContentItems.where((p) => 
+        p.videoUrl != null && 
+        p.videoUrl!.isNotEmpty
+      ).toList();
+      
+      // Get recent podcasts (audio podcasts sorted by created_at)
+      _recentPodcasts = List.from(_audioPodcasts);
+      _recentPodcasts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      _recentPodcasts = _recentPodcasts.take(5).toList();
+      
+      print('✅ Loaded ${_audioPodcasts.length} audio podcasts and ${_videoPodcasts.length} video podcasts');
+    } catch (e) {
+      print('❌ Error fetching podcasts: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingPodcasts = false;
+        });
+      }
+    }
+  }
+
+  String _getCategoryName(int? categoryId) {
+    switch (categoryId) {
+      case 1: return 'Sermons';
+      case 2: return 'Bible Study';
+      case 3: return 'Devotionals';
+      case 4: return 'Prayer';
+      case 5: return 'Worship';
+      case 6: return 'Gospel';
+      default: return 'Podcast';
+    }
   }
 
   void _handleVoiceBubblePress() {
@@ -106,7 +192,6 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
 
   @override
   Widget build(BuildContext context) {
-    final podcastProvider = Provider.of<PodcastProvider>(context, listen: false);
     final musicProvider = Provider.of<MusicProvider>(context, listen: false);
 
     return Container(
@@ -116,7 +201,7 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
           RefreshIndicator(
             onRefresh: () async {
               await Future.wait([
-                podcastProvider.fetchPodcasts(),
+                _fetchPodcasts(),
                 musicProvider.fetchTracks(),
               ]);
             },
@@ -189,106 +274,85 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
                 
                 const SizedBox(height: AppSpacing.extraLarge),
                 
-                // Video Podcasts Section (Previously Featured)
-                Consumer<PodcastProvider>(
-                    builder: (context, provider, child) {
-                      if (provider.isLoading) {
-                        return Padding(
-                          padding: EdgeInsets.symmetric(horizontal: AppSpacing.medium),
-                          child: SizedBox(
-                            height: 200,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: 3,
-                              itemBuilder: (_, __) => Padding(
-                                padding: EdgeInsets.only(right: AppSpacing.small),
-                                child: const LoadingShimmer(width: 160, height: 200),
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                      
-                      if (provider.featuredVideoPodcasts.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
-                      
-                      return ContentSection(
-                        title: 'Video Podcasts',
-                        items: provider.featuredVideoPodcasts,
-                        isHorizontal: true,
-                        onItemPlay: _handlePlayVideo,
-                        onItemTap: _handleItemTapVideo,
-                      );
-                    },
-                ),
+                // Video Podcasts Section (All Video Podcasts)
+                if (_isLoadingPodcasts)
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: AppSpacing.medium),
+                    child: SizedBox(
+                      height: 200,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: 3,
+                        itemBuilder: (_, __) => Padding(
+                          padding: EdgeInsets.only(right: AppSpacing.small),
+                          child: const LoadingShimmer(width: 160, height: 200),
+                        ),
+                      ),
+                    ),
+                  )
+                else if (_videoPodcasts.isEmpty)
+                  const SizedBox.shrink()
+                else
+                  ContentSection(
+                    title: 'Video Podcasts',
+                    items: _videoPodcasts,
+                    isHorizontal: true,
+                    onItemPlay: _handlePlayVideo,
+                    onItemTap: _handleItemTapVideo,
+                  ),
                 
                 const SizedBox(height: AppSpacing.large),
                 
                 // Audio Podcasts Section
-                Consumer<PodcastProvider>(
-                    builder: (context, provider, child) {
-                      if (provider.isLoading) {
-                        return Padding(
-                          padding: EdgeInsets.symmetric(horizontal: AppSpacing.medium),
-                          child: Column(
-                            children: List.generate(3, (_) => Padding(
-                              padding: EdgeInsets.only(bottom: AppSpacing.small),
-                              child: const LoadingShimmer(width: double.infinity, height: 100),
-                            )),
-                          ),
-                        );
-                      }
-                      
-                      if (provider.podcasts.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
-                      
-                      return ContentSection(
-                        title: 'Audio Podcasts',
-                        items: provider.podcasts.take(3).toList(),
-                        isHorizontal: false,
-                        useDiscDesign: true,
-                        onItemPlay: _handlePlay,
-                        onItemTap: _handleItemTap,
-                      );
-                    },
-                ),
+                if (_isLoadingPodcasts)
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: AppSpacing.medium),
+                    child: Column(
+                      children: List.generate(3, (_) => Padding(
+                        padding: EdgeInsets.only(bottom: AppSpacing.small),
+                        child: const LoadingShimmer(width: double.infinity, height: 100),
+                      )),
+                    ),
+                  )
+                else if (_audioPodcasts.isEmpty)
+                  const SizedBox.shrink()
+                else
+                  ContentSection(
+                    title: 'Audio Podcasts',
+                    items: _audioPodcasts.take(3).toList(),
+                    isHorizontal: false,
+                    useDiscDesign: true,
+                    onItemPlay: _handlePlay,
+                    onItemTap: _handleItemTap,
+                  ),
                 
                 const SizedBox(height: AppSpacing.large),
                 
                 // Recently Played Section
-                Consumer<PodcastProvider>(
-                    builder: (context, provider, child) {
-                      if (provider.isLoading) {
-                        return Padding(
-                        padding: EdgeInsets.symmetric(horizontal: AppSpacing.medium),
-                          child: Column(
-                            children: List.generate(3, (_) => Padding(
-                            padding: EdgeInsets.only(bottom: AppSpacing.small),
-                            child: const LoadingShimmer(width: double.infinity, height: 100),
-                            )),
-                          ),
-                        );
-                      }
-                      
-                      if (provider.recentPodcasts.isEmpty) {
-                        return const EmptyState(
-                          icon: Icons.history,
-                          title: 'No Recent Playbacks',
-                          message: 'Start exploring content to see your recently played items here',
-                        );
-                      }
-                      
-                      return ContentSection(
-                        title: 'Recently Played',
-                        items: provider.recentPodcasts,
-                        isHorizontal: false,
-                        onItemPlay: _handlePlay,
-                        onItemTap: _handleItemTap,
-                      );
-                    },
-                ),
+                if (_isLoadingPodcasts)
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: AppSpacing.medium),
+                    child: Column(
+                      children: List.generate(3, (_) => Padding(
+                        padding: EdgeInsets.only(bottom: AppSpacing.small),
+                        child: const LoadingShimmer(width: double.infinity, height: 100),
+                      )),
+                    ),
+                  )
+                else if (_recentPodcasts.isEmpty)
+                  const EmptyState(
+                    icon: Icons.history,
+                    title: 'No Recent Playbacks',
+                    message: 'Start exploring content to see your recently played items here',
+                  )
+                else
+                  ContentSection(
+                    title: 'Recently Played',
+                    items: _recentPodcasts,
+                    isHorizontal: false,
+                    onItemPlay: _handlePlay,
+                    onItemTap: _handleItemTap,
+                  ),
                 
                 const SizedBox(height: AppSpacing.large),
                 

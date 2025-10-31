@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'dart:io';
 import '../../theme/app_spacing.dart';
 import 'video_preview_screen.dart';
 
@@ -48,8 +49,36 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
   }
 
   Future<void> _stopRecording() async {
-    if (_controller != null && _controller!.value.isInitialized) {
+    if (_controller == null || !_controller!.value.isInitialized) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Camera not initialized')),
+        );
+      }
+      return;
+    }
+
+    try {
+      setState(() {
+        _isRecording = false;
+      });
+
       final video = await _controller!.stopVideoRecording();
+      
+      // Verify the video file exists
+      final file = File(video.path);
+      if (!await file.exists()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Video file not found')),
+          );
+        }
+        return;
+      }
+
+      // Get actual file size
+      final fileSize = await file.length();
+      
       // Navigate to video preview screen
       if (mounted) {
         Navigator.pushReplacement(
@@ -59,10 +88,21 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
               videoUri: video.path,
               source: 'camera',
               duration: _recordingDuration,
-              fileSize: _recordingDuration * 1024 * 1024, // Estimate 1MB per second
+              fileSize: fileSize,
             ),
           ),
         );
+      }
+    } catch (e) {
+      print('Error stopping video recording: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error stopping recording: $e')),
+        );
+        // Reset recording state
+        setState(() {
+          _isRecording = false;
+        });
       }
     }
   }
@@ -106,7 +146,7 @@ class _VideoRecordingScreenState extends State<VideoRecordingScreen> {
   String _formatDuration(int seconds) {
     final mins = seconds ~/ 60;
     final secs = seconds % 60;
-    return '${mins.toString().padLeft(1, '0')}:${secs.toString().padLeft(2, '0')}';
+    return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
   }
 
   @override

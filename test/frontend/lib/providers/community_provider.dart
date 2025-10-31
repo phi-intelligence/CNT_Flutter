@@ -52,8 +52,8 @@ class CommunityProvider extends ChangeNotifier {
   
   Future<void> likePost(int postId) async {
     try {
-      final success = await _api.likePost(postId);
-      if (success) {
+      final result = await _api.likePost(postId);
+      if (result != null) {
         // Update the post in the local list
         final index = _posts.indexWhere((post) {
           final id = post is Map ? post['id'] : post.id;
@@ -63,12 +63,10 @@ class CommunityProvider extends ChangeNotifier {
         if (index != -1) {
           final post = _posts[index];
           if (post is Map<String, dynamic>) {
-            // Update Map-based post
-            final currentLikes = (post['likes'] ?? 0) as int;
-            final isLiked = (post['is_liked'] ?? false) as bool;
+            // Update Map-based post with response from API
             final updatedPost = Map<String, dynamic>.from(post);
-            updatedPost['likes'] = isLiked ? currentLikes - 1 : currentLikes + 1;
-            updatedPost['is_liked'] = !isLiked;
+            updatedPost['likes_count'] = result['likes_count'] ?? post['likes_count'] ?? 0;
+            updatedPost['is_liked'] = result['liked'] ?? false;
             _posts[index] = updatedPost;
           } else {
             // For object-based posts, we'd need to create a new object

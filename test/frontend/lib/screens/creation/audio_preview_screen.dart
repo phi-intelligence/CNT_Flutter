@@ -165,10 +165,23 @@ class _AudioPreviewScreenState extends State<AudioPreviewScreen> {
 
   String _formatFileSize(int bytes) {
     if (bytes == 0) return '0 B';
+    if (bytes < 1024) return '$bytes B';
+    
     final k = 1024;
     final sizes = ['B', 'KB', 'MB', 'GB'];
-    final i = (bytes / k).floor();
-    return '${(bytes / (k * i)).toStringAsFixed(2)} ${sizes[i]}';
+    int i = 0;
+    double size = bytes.toDouble();
+    
+    // Calculate the correct unit index
+    while (size >= k && i < sizes.length - 1) {
+      size /= k;
+      i++;
+    }
+    
+    // Clamp index to valid range
+    i = i.clamp(0, sizes.length - 1);
+    
+    return '${size.toStringAsFixed(2)} ${sizes[i]}';
   }
 
 
