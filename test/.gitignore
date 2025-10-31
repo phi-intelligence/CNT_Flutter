@@ -1,2 +1,11 @@
 backend/.env.example
 backend/.env
+
+# Jitsi Meet Local Setup
+jitsi-meet-local/.env
+jitsi-meet-local/jitsi-config/**/certs/*
+jitsi-meet-local/jitsi-config/**/data/*
+jitsi-meet-local/jitsi-config/**/*.key
+jitsi-meet-local/jitsi-config/**/*.crt
+jitsi-meet-local/jitsi-config/**/*.pem
+jitsi-meet-local/jitsi-config/transcripts/*
