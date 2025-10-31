@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
-import '../../services/livekit_service.dart';
+// TODO: Update to use Jitsi Meet SDK for live streaming if needed
+// import '../../services/jitsi_service.dart'; // Uncomment when implementing Jitsi streaming
 
 /// Live Stream Broadcaster Screen - Go live and broadcast
 class LiveStreamBroadcaster extends StatefulWidget {
@@ -28,7 +29,8 @@ class _LiveStreamBroadcasterState extends State<LiveStreamBroadcaster> {
   bool _isMuted = false;
   bool _isCameraOn = true;
   CameraController? _cameraController;
-  final LiveKitService _livekitService = LiveKitService();
+  // TODO: Replace with Jitsi service when implementing live streaming
+  // final JitsiService _jitsiService = JitsiService();
   int _viewerCount = 0;
   DateTime? _startTime;
 
@@ -51,26 +53,16 @@ class _LiveStreamBroadcasterState extends State<LiveStreamBroadcaster> {
   }
 
   Future<void> _startStreaming() async {
-    final success = await _livekitService.connectToRoom(
-      url: widget.serverUrl,
-      token: widget.token,
-    );
-
-    if (success) {
-      await _livekitService.setCameraEnabled(true);
-      await _livekitService.setMicrophoneEnabled(true);
-      
-      setState(() {
-        _isStreaming = true;
-        _startTime = DateTime.now();
-      });
-      
-      _updateViewerCount();
-    }
+    // TODO: Implement Jitsi Meet connection for live streaming
+    setState(() {
+      _isStreaming = false;
+      _startTime = null;
+    });
+    // Placeholder - needs Jitsi Meet SDK integration
   }
 
   Future<void> _stopStreaming() async {
-    await _livekitService.disconnect();
+    // TODO: Disconnect from Jitsi
     setState(() {
       _isStreaming = false;
     });
@@ -86,24 +78,25 @@ class _LiveStreamBroadcasterState extends State<LiveStreamBroadcaster> {
     setState(() {
       _isMuted = !_isMuted;
     });
-    _livekitService.setMicrophoneEnabled(!_isMuted);
+    // TODO: Implement mute toggle with Jitsi
   }
 
   void _toggleCamera() {
     setState(() {
       _isCameraOn = !_isCameraOn;
     });
-    _livekitService.setCameraEnabled(_isCameraOn);
+    // TODO: Implement camera toggle with Jitsi
   }
 
   void _flipCamera() {
-    _livekitService.flipCamera();
+    // TODO: Implement camera flip with Jitsi
   }
 
   void _updateViewerCount() {
     if (_isStreaming) {
+      // TODO: Get participant count from Jitsi
       setState(() {
-        _viewerCount = _livekitService.participantCount;
+        _viewerCount = 0;
       });
       Future.delayed(const Duration(seconds: 5), _updateViewerCount);
     }
@@ -120,7 +113,7 @@ class _LiveStreamBroadcasterState extends State<LiveStreamBroadcaster> {
   @override
   void dispose() {
     _cameraController?.dispose();
-    _livekitService.disconnect();
+    // TODO: Clean up Jitsi connection
     super.dispose();
   }
 

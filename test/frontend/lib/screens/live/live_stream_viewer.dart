@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:livekit_client/livekit_client.dart';
+// TODO: Update to use Jitsi Meet SDK for live streaming if needed
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
-import '../../services/livekit_service.dart';
+// import '../../services/jitsi_service.dart'; // Uncomment when implementing Jitsi streaming
 
 /// Live Stream Viewer Screen - Watch live streams
 class LiveStreamViewer extends StatefulWidget {
@@ -32,7 +32,8 @@ class _LiveStreamViewerState extends State<LiveStreamViewer> {
   bool _isLoading = true;
   bool _isConnected = false;
   int _viewerCount = 0;
-  final LiveKitService _livekitService = LiveKitService();
+  // TODO: Replace with Jitsi service when implementing live streaming
+  // final JitsiService _jitsiService = JitsiService();
 
   @override
   void initState() {
@@ -41,29 +42,18 @@ class _LiveStreamViewerState extends State<LiveStreamViewer> {
   }
 
   Future<void> _connectToStream() async {
-    final success = await _livekitService.connectToRoom(
-      url: widget.serverUrl,
-      token: widget.token,
-    );
-
-    if (success) {
-      setState(() {
-        _isConnected = true;
-        _isLoading = false;
-      });
-
-      // Update viewer count
-      _updateViewerCount();
-    } else {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    // TODO: Implement Jitsi Meet connection for live streaming
+    setState(() {
+      _isConnected = false;
+      _isLoading = false;
+    });
+    // Placeholder - needs Jitsi Meet SDK integration
   }
 
   void _updateViewerCount() {
+    // TODO: Get participant count from Jitsi
     setState(() {
-      _viewerCount = _livekitService.participantCount;
+      _viewerCount = 0;
     });
   }
 
@@ -71,11 +61,11 @@ class _LiveStreamViewerState extends State<LiveStreamViewer> {
     setState(() {
       _isMuted = !_isMuted;
     });
-    _livekitService.setMicrophoneEnabled(!_isMuted);
+    // TODO: Implement mute toggle with Jitsi
   }
 
   Future<void> _leaveStream() async {
-    await _livekitService.disconnect();
+    // TODO: Disconnect from Jitsi
     if (mounted) {
       Navigator.of(context).pop();
     }
@@ -83,7 +73,7 @@ class _LiveStreamViewerState extends State<LiveStreamViewer> {
 
   @override
   void dispose() {
-    _livekitService.disconnect();
+    // TODO: Clean up Jitsi connection
     super.dispose();
   }
 

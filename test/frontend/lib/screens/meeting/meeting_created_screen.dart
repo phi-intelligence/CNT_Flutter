@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
+import 'meeting_room_screen.dart';
+import '../../services/jitsi_service.dart';
+import 'prejoin_screen.dart';
 
 /// Meeting Created Screen
 /// Shows meeting details with share options and join button
@@ -24,16 +27,46 @@ class MeetingCreatedScreen extends StatefulWidget {
 
 class _MeetingCreatedScreenState extends State<MeetingCreatedScreen> {
   bool _isCopied = false;
+  bool _joining = false;
+  String? _joinError;
 
   void _handleBack() {
     Navigator.pop(context);
   }
 
-  void _handleJoinMeeting() {
-    // TODO: Navigate to MeetingRoom
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Joining meeting...')),
-    );
+  Future<void> _handleJoinMeeting() async {
+    setState(() { _joining = true; _joinError = null; });
+    try {
+      final identity = 'host-user-${DateTime.now().millisecondsSinceEpoch}';
+      final userName = 'Host';
+      final joinResp = await JitsiService().fetchTokenForMeeting(
+        streamOrMeetingId: int.tryParse(widget.meetingId) ?? 0,
+        userIdentity: identity,
+        userName: userName,
+        isHost: true,
+      );
+      setState(() { _joining = false; });
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PrejoinScreen(
+            meetingId: widget.meetingId,
+            jitsiUrl: joinResp.url,
+            jwtToken: joinResp.token,
+            roomName: joinResp.roomName,
+            userName: userName,
+            isHost: true,
+          ),
+        ),
+      );
+    } catch (e) {
+      setState(() { _joining = false; _joinError = e.toString(); });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to join meeting: $e')),
+        );
+      }
+    }
   }
 
   void _handleCopyLink() async {

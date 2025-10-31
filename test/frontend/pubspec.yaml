@@ -24,7 +24,6 @@ dependencies:
   audioplayers: ^5.2.1
   just_audio: ^0.9.36
   video_player: ^2.8.2
-  # livekit_client: ^1.0.0  # Requires flutter_webrtc which has build issues
   audio_session: ^0.1.18
   
   # Storage
@@ -55,9 +54,9 @@ dependencies:
   # Utils
   intl: ^0.19.0
   uuid: ^4.2.1
-  flutter_webrtc: 1.2.0
-  livekit_client: 2.5.3
-  # flutter_livekit_webrtc: ^0.12.1+hotfix.3 # Only if you use it
+  
+  # Video Conferencing
+  jitsi_meet_flutter_sdk: ^11.6.0
 
 dev_dependencies:
   flutter_test:

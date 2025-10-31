@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
+import '../../services/jitsi_config.dart';
+import '../../services/api_service.dart';
 import 'meeting_created_screen.dart';
 
 /// Schedule Meeting Screen
@@ -64,7 +66,7 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
-  void _handleSchedule() {
+  void _handleSchedule() async {
     if (_titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a meeting title')),
@@ -72,32 +74,45 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() { _isLoading = true; });
 
-    // Generate meeting ID and link
-    final meetingId = DateTime.now().millisecondsSinceEpoch.toString().substring(6);
-    final meetingLink = 'https://meet.christtabernacle.com/$meetingId';
+    try {
+      // Build scheduled start datetime
+      final scheduled = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
+        _selectedTime.hour,
+        _selectedTime.minute,
+      );
+      final resp = await ApiService().createStream(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+        scheduledStart: scheduled,
+      );
+      final meetingId = (resp['id'] ?? '').toString();
+      final roomName = resp['room_name'] as String;
+      final meetingLink = '${JitsiConfig.serverUrl}/$roomName';
 
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MeetingCreatedScreen(
-              meetingId: meetingId,
-              meetingLink: meetingLink,
-              isInstant: false,
-            ),
+      if (!mounted) return;
+      setState(() { _isLoading = false; });
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MeetingCreatedScreen(
+            meetingId: meetingId,
+            meetingLink: meetingLink,
+            isInstant: false,
           ),
-        );
-      }
-    });
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() { _isLoading = false; });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to schedule meeting: $e')),
+      );
+    }
   }
 
   @override

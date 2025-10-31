@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
+import '../../services/jitsi_config.dart';
+import '../../services/api_service.dart';
 import '../meeting/meeting_created_screen.dart';
 import '../meeting/schedule_meeting_screen.dart';
 import '../meeting/join_meeting_screen.dart';
@@ -59,21 +61,33 @@ class MeetingOptionsScreenMobile extends StatelessWidget {
                             subtitle: 'Start a meeting right now',
                             icon: Icons.video_call,
                             color: AppColors.primaryMain,
-                            onTap: () {
-                              // Generate meeting ID and link for instant meeting
-                              final meetingId = DateTime.now().millisecondsSinceEpoch.toString().substring(6);
-                              final meetingLink = 'https://meet.christtabernacle.com/$meetingId';
-                              
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => MeetingCreatedScreen(
-                                    meetingId: meetingId,
-                                    meetingLink: meetingLink,
-                                    isInstant: true,
+                            onTap: () async {
+                              try {
+                                final resp = await ApiService().createStream(title: 'Instant Meeting');
+                                final meetingId = (resp['id'] ?? '').toString();
+                                final roomName = resp['room_name'] as String;
+                                final meetingLink = '${JitsiConfig.serverUrl}/$roomName';
+                                if (meetingId.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Failed to create meeting')),
+                                  );
+                                  return;
+                                }
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => MeetingCreatedScreen(
+                                      meetingId: meetingId,
+                                      meetingLink: meetingLink,
+                                      isInstant: true,
+                                    ),
                                   ),
-                                ),
-                              );
+                                );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Failed to start instant meeting: $e')),
+                                );
+                              }
                             },
                           ),
                         ),

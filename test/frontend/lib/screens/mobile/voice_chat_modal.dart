@@ -4,7 +4,8 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 
-/// Voice Chat Modal - Full-screen modal with LiveKit integration
+/// Voice Chat Modal - Full-screen modal for voice chat
+/// TODO: Consider Jitsi Meet integration for voice chat functionality
 class VoiceChatModal extends StatefulWidget {
   const VoiceChatModal({super.key});
 
@@ -13,7 +14,7 @@ class VoiceChatModal extends StatefulWidget {
 }
 
 class _VoiceChatModalState extends State<VoiceChatModal> {
-  // Room? _room; // LiveKit room - commented out for now
+  // TODO: Add Jitsi room connection if implementing voice chat
   bool _isConnected = false;
   bool _isMicrophoneEnabled = false;
   bool _isListening = false;
@@ -23,7 +24,7 @@ class _VoiceChatModalState extends State<VoiceChatModal> {
   @override
   void initState() {
     super.initState();
-    _connectToLiveKit();
+    _connectToVoiceChat();
   }
 
   @override
@@ -32,13 +33,13 @@ class _VoiceChatModalState extends State<VoiceChatModal> {
     super.dispose();
   }
 
-  Future<void> _connectToLiveKit() async {
+  Future<void> _connectToVoiceChat() async {
     try {
       setState(() {
         _statusMessage = 'Connecting...';
       });
 
-      // Generate room name and user ID for future LiveKit integration
+      // Generate room name and user ID for future voice chat integration
       // final roomName = 'ai-chat-${DateTime.now().millisecondsSinceEpoch}';
       // final userId = 'user-${DateTime.now().millisecondsSinceEpoch}';
       
@@ -46,7 +47,7 @@ class _VoiceChatModalState extends State<VoiceChatModal> {
       await Future.delayed(const Duration(seconds: 1));
       
       setState(() {
-        _statusMessage = 'Connecting to LiveKit server...';
+        _statusMessage = 'Connecting to voice chat server...';
       });
       
       // Simulate successful connection
@@ -82,7 +83,7 @@ class _VoiceChatModalState extends State<VoiceChatModal> {
       });
     }
     
-    // TODO: Implement microphone toggle with LiveKit
+    // TODO: Implement microphone toggle with voice chat service
     // await _room!.localParticipant.setMicrophoneEnabled(_isMicrophoneEnabled);
   }
 

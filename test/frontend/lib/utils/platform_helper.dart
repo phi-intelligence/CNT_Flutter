@@ -37,10 +37,10 @@ class PlatformHelper {
   /// Get base URL for API calls based on platform
   static String getApiBaseUrl() {
     if (kIsWeb) {
-      return 'http://localhost:8000/api/v1';
+      return 'http://localhost:8002/api/v1';
     } else {
       // Android emulator uses 10.0.2.2 to access host machine's localhost
-      return 'http://10.0.2.2:8000/api/v1';
+      return 'http://10.0.2.2:8002/api/v1';
     }
   }
   
@@ -49,7 +49,7 @@ class PlatformHelper {
     if (kIsWeb) {
       return 'ws://localhost:8000';
     } else {
-      return 'ws://10.0.2.2:8000';
+      return 'ws://10.0.2.2:8002';
     }
   }
 }

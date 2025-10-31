@@ -15,7 +15,7 @@ class WebSocketService {
   Future<void> connect() async {
     if (_isConnected) return;
     try {
-      final url = 'http://10.0.2.2:8000';
+      final url = 'http://10.0.2.2:8002';
       _socket = IO.io(url, <String, dynamic>{
         'path': '/socket.io/',
         'transports': ['websocket'],

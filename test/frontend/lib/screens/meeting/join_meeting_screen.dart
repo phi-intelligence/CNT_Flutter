@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
+import 'meeting_room_screen.dart';
+import '../../services/jitsi_service.dart';
+import 'prejoin_screen.dart';
 
 /// Join Meeting Screen
 /// Enter meeting ID or link to join
@@ -15,32 +18,68 @@ class JoinMeetingScreen extends StatefulWidget {
 class _JoinMeetingScreenState extends State<JoinMeetingScreen> {
   final TextEditingController _meetingIdController = TextEditingController();
   final TextEditingController _meetingLinkController = TextEditingController();
+  bool _joining = false;
+  String? _joinError;
 
   void _handleBack() {
     Navigator.pop(context);
   }
 
-  void _handleJoinMeeting() {
+  void _handleJoinMeeting() async {
     if (_meetingIdController.text.trim().isEmpty && _meetingLinkController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a meeting ID or link')),
       );
       return;
     }
-
     String meetingId = _meetingIdController.text.trim();
     String meetingLink = _meetingLinkController.text.trim();
-
-    // Extract ID from link if provided
+    String? roomNameFromLink;
     if (meetingLink.isNotEmpty && meetingId.isEmpty) {
       final urlParts = meetingLink.split('/');
-      meetingId = urlParts.last;
+      roomNameFromLink = urlParts.isNotEmpty ? urlParts.last : null;
     }
-
-    // TODO: Navigate to MeetingRoom
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Joining meeting: $meetingId')),
-    );
+    setState(() { _joining = true; _joinError = null; });
+    try {
+      final identity = 'guest-user-${DateTime.now().millisecondsSinceEpoch}';
+      final userName = 'Guest User';
+      final jitsiSvc = JitsiService();
+      final bool useRoomJoin = (roomNameFromLink != null && roomNameFromLink!.isNotEmpty) || int.tryParse(meetingId) == null;
+      final joinResp = useRoomJoin
+          ? await jitsiSvc.fetchTokenForMeetingByRoom(
+              roomName: roomNameFromLink ?? meetingId,
+              userIdentity: identity,
+              userName: userName,
+              isHost: false,
+            )
+          : await jitsiSvc.fetchTokenForMeeting(
+              streamOrMeetingId: int.parse(meetingId),
+              userIdentity: identity,
+              userName: userName,
+              isHost: false,
+            );
+      setState(() { _joining = false; });
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PrejoinScreen(
+            meetingId: meetingId,
+            jitsiUrl: joinResp.url,
+            jwtToken: joinResp.token,
+            roomName: joinResp.roomName,
+            userName: userName,
+            isHost: false,
+          ),
+        ),
+      );
+    } catch (e) {
+      setState(() { _joining = false; _joinError = e.toString(); });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to join meeting: $e')),
+        );
+      }
+    }
   }
 
   void _handleScanQR() {

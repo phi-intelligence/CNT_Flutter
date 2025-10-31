@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-// import 'package:livekit_client/livekit_client.dart' as livekit; // Temporarily disabled
+// TODO: Consider Jitsi Meet integration for live streaming if needed
 
 class LiveStreamingScreen extends StatefulWidget {
   const LiveStreamingScreen({super.key});
@@ -10,7 +10,7 @@ class LiveStreamingScreen extends StatefulWidget {
 
 class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
   int _selectedTab = 0;
-  // final List<livekit.RemoteParticipant> _participants = []; // Temporarily disabled
+  // TODO: Add participant list when implementing live streaming
   final List<dynamic> _participants = [];
   bool _isHost = false;
 
@@ -124,7 +124,7 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
   }
 
   Future<void> _joinStream(BuildContext context, int streamId) async {
-    // TODO: Implement LiveKit room join
+    // TODO: Implement Jitsi Meet room join for live streaming
     Navigator.push(
       context,
       MaterialPageRoute(

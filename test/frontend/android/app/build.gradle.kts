@@ -24,7 +24,8 @@ android {
         applicationId = "com.example.cnt_media_platform"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // Jitsi Meet SDK 11.6.0 requires minSdk 26
+        minSdk = maxOf(flutter.minSdkVersion, 26)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -37,6 +38,11 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+}
+
+// Exclude duplicate Media3 RTSP module to avoid class duplication with Jitsi SDK
+configurations.all {
+    exclude(group = "androidx.media3", module = "media3-exoplayer-rtsp")
 }
 
 flutter {
