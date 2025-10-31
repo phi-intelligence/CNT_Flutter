@@ -253,7 +253,10 @@ class _CommunityScreenMobileState extends State<CommunityScreenMobile> {
                     color: isLiked ? AppColors.errorMain : null,
                   ),
                   onPressed: () {
-                    provider.likePost(postId);
+                    final id = postId is int ? postId : (postId is String ? int.tryParse(postId) : null);
+                    if (id != null) {
+                      provider.likePost(id);
+                    }
                   },
                 ),
                 Text('$likes'),

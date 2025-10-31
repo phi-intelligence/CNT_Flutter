@@ -24,11 +24,15 @@ class _CreatePostModalState extends State<CreatePostModal> {
     return Dialog(
       child: Container(
         padding: const EdgeInsets.all(24),
-        constraints: const BoxConstraints(maxWidth: 600),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        constraints: BoxConstraints(
+          maxWidth: 600,
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             // Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -107,7 +111,8 @@ class _CreatePostModalState extends State<CreatePostModal> {
                 ),
               ],
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

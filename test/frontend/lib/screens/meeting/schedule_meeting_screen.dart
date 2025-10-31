@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
@@ -59,7 +60,9 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
   }
 
   String _formatDate(DateTime date) {
-    return '${date.weekday.toString().substring(0, 3)} ${date.month}/${date.day}/${date.year}';
+    // Use DateFormat to get weekday abbreviation (Mon, Tue, etc.)
+    final weekday = DateFormat('EEE').format(date);
+    return '$weekday ${date.month}/${date.day}/${date.year}';
   }
 
   String _formatTime(TimeOfDay time) {

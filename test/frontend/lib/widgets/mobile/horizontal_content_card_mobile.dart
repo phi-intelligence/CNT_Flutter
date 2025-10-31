@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/content_item.dart';
+import '../shared/image_helper.dart';
 
 /// Horizontal card for featured content in horizontal lists
 /// Designed for 160px width with thumbnail on top
@@ -42,23 +43,60 @@ class HorizontalContentCardMobile extends StatelessWidget {
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(12),
                   ),
-                  image: item.coverImage != null
-                      ? DecorationImage(
-                          image: NetworkImage(item.coverImage!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
                 ),
                 child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    if (item.coverImage == null)
-                      Center(
-                        child: Icon(
-                          Icons.music_note,
-                          color: Colors.grey[500],
-                          size: 48,
-                        ),
+                    // Image
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(12),
                       ),
+                      child: item.coverImage != null
+                          ? Image(
+                              image: ImageHelper.getImageProvider(
+                                item.coverImage,
+                                fallbackAsset: ImageHelper.getFallbackAsset(
+                                  int.tryParse(item.id) ?? 0,
+                                ),
+                              ),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Image.asset(
+                                  ImageHelper.getFallbackAsset(
+                                    int.tryParse(item.id) ?? 0,
+                                  ),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: Colors.grey[300],
+                                      child: const Icon(
+                                        Icons.music_note,
+                                        color: Colors.grey,
+                                        size: 48,
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            )
+                          : Image.asset(
+                              ImageHelper.getFallbackAsset(
+                                int.tryParse(item.id) ?? 0,
+                              ),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[300],
+                                  child: const Icon(
+                                    Icons.music_note,
+                                    color: Colors.grey,
+                                    size: 48,
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
                     // Play button overlay
                     Positioned(
                       bottom: 8,

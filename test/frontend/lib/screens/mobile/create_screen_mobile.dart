@@ -89,16 +89,16 @@ class CreateScreenMobile extends StatelessWidget {
               // Meeting option (full width)
               _buildOptionCard(
                 context,
-              title: 'Meeting',
-              subtitle: 'Start meeting',
-              icon: Icons.group,
-              color: AppColors.accentMain,
-              onTap: () => _navigateToScreen(
-                context,
-                const MeetingOptionsScreenMobile(),
+                title: 'Meeting',
+                subtitle: 'Start meeting',
+                icon: Icons.group,
+                color: AppColors.accentMain,
+                onTap: () => _navigateToScreen(
+                  context,
+                  const MeetingOptionsScreenMobile(),
+                ),
+                isFullWidth: true,
               ),
-              isFullWidth: true,
-            ),
             ],
           ),
         ),
@@ -118,9 +118,14 @@ class CreateScreenMobile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: isFullWidth ? 120 : 180,
+        constraints: isFullWidth 
+          ? const BoxConstraints(minHeight: 120, maxHeight: 150)
+          : const BoxConstraints(minHeight: 190, maxHeight: 190),
         width: double.infinity,
-        padding: EdgeInsets.all(AppSpacing.large),
+        padding: EdgeInsets.symmetric(
+          horizontal: isFullWidth ? AppSpacing.medium : AppSpacing.medium,
+          vertical: isFullWidth ? AppSpacing.small : AppSpacing.medium,
+        ),
         decoration: BoxDecoration(
           color: AppColors.backgroundSecondary,
           borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
@@ -133,10 +138,10 @@ class CreateScreenMobile extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon circle (80x80)
+            // Icon circle - smaller for full width cards to fit
             Container(
-              width: 80,
-              height: 80,
+              width: isFullWidth ? 48 : 72,
+              height: isFullWidth ? 48 : 72,
               decoration: BoxDecoration(
                 color: color,
                 shape: BoxShape.circle,
@@ -151,32 +156,32 @@ class CreateScreenMobile extends StatelessWidget {
               child: Icon(
                 icon,
                 color: AppColors.backgroundPrimary,
-                size: 40,
+                size: isFullWidth ? 24 : 36,
               ),
             ),
-            const SizedBox(height: AppSpacing.small),
-            Flexible(
-              child: Text(
-                title,
-                style: AppTypography.heading4.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+            SizedBox(height: isFullWidth ? 6 : AppSpacing.extraSmall),
+            // Title
+            Text(
+              title,
+              style: AppTypography.heading4.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: isFullWidth ? 16 : 19,
               ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: AppSpacing.tiny),
-            Flexible(
-              child: Text(
-                subtitle,
-                style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+            SizedBox(height: isFullWidth ? 2 : 4.0),
+            // Subtitle
+            Text(
+              subtitle,
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+                fontSize: isFullWidth ? 12 : 13,
               ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

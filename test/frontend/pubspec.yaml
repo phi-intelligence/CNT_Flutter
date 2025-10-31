@@ -66,10 +66,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   
-  # Assets commented out until folders exist
-  # assets:
-  #   - assets/images/
-  #   - assets/icons/
+  # Assets
+  assets:
+    - assets/images/
   
   # Fonts commented out until files exist
   # fonts:

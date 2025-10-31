@@ -35,16 +35,37 @@ class _JoinMeetingScreenState extends State<JoinMeetingScreen> {
     String meetingId = _meetingIdController.text.trim();
     String meetingLink = _meetingLinkController.text.trim();
     String? roomNameFromLink;
-    if (meetingLink.isNotEmpty && meetingId.isEmpty) {
-      final urlParts = meetingLink.split('/');
-      roomNameFromLink = urlParts.isNotEmpty ? urlParts.last : null;
+    
+    // Extract room name from link if link is provided (and ID is empty for clarity)
+    if (meetingLink.isNotEmpty) {
+      final uri = Uri.tryParse(meetingLink);
+      if (uri != null && uri.pathSegments.isNotEmpty) {
+        roomNameFromLink = uri.pathSegments.last;
+      } else {
+        // Try simple split as fallback
+        final urlParts = meetingLink.split('/');
+        roomNameFromLink = urlParts.isNotEmpty && urlParts.last.isNotEmpty ? urlParts.last : null;
+      }
     }
+    
     setState(() { _joining = true; _joinError = null; });
     try {
       final identity = 'guest-user-${DateTime.now().millisecondsSinceEpoch}';
       final userName = 'Guest User';
       final jitsiSvc = JitsiService();
-      final bool useRoomJoin = (roomNameFromLink != null && roomNameFromLink!.isNotEmpty) || int.tryParse(meetingId) == null;
+      
+      // Determine join method:
+      // 1. If link provided with valid room name, use room-based join
+      // 2. If numeric ID provided (and no link), use ID-based join
+      // 3. If non-numeric ID (room name), use room-based join
+      final meetingIdInt = int.tryParse(meetingId);
+      final bool useRoomJoin = (roomNameFromLink != null && roomNameFromLink.isNotEmpty) || 
+                               (meetingId.isNotEmpty && meetingIdInt == null);
+      
+      if (!useRoomJoin && (meetingIdInt == null || meetingIdInt <= 0)) {
+        throw Exception('Invalid meeting ID: $meetingId');
+      }
+      
       final joinResp = useRoomJoin
           ? await jitsiSvc.fetchTokenForMeetingByRoom(
               roomName: roomNameFromLink ?? meetingId,
@@ -53,7 +74,7 @@ class _JoinMeetingScreenState extends State<JoinMeetingScreen> {
               isHost: false,
             )
           : await jitsiSvc.fetchTokenForMeeting(
-              streamOrMeetingId: int.parse(meetingId),
+              streamOrMeetingId: meetingIdInt!,
               userIdentity: identity,
               userName: userName,
               isHost: false,

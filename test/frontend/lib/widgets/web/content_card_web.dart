@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/content_item.dart';
+import '../shared/image_helper.dart';
 
 class ContentCardWeb extends StatefulWidget {
   final ContentItem item;
@@ -44,29 +45,33 @@ class _ContentCardWebState extends State<ContentCardWeb> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    widget.item.coverImage != null
-                        ? Image.network(
-                            widget.item.coverImage!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: Colors.grey[300],
-                                child: Icon(
-                                  Icons.music_note,
-                                  size: 48,
-                                  color: Colors.grey[500],
-                                ),
-                              );
-                            },
-                          )
-                        : Container(
-                            color: Colors.grey[300],
-                            child: Icon(
-                              Icons.music_note,
-                              size: 48,
-                              color: Colors.grey[500],
-                            ),
+                    Image(
+                      image: ImageHelper.getImageProvider(
+                        widget.item.coverImage,
+                        fallbackAsset: ImageHelper.getFallbackAsset(
+                          int.tryParse(widget.item.id) ?? 0,
+                        ),
+                      ),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Image.asset(
+                          ImageHelper.getFallbackAsset(
+                            int.tryParse(widget.item.id) ?? 0,
                           ),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[300],
+                              child: const Icon(
+                                Icons.music_note,
+                                size: 48,
+                                color: Colors.grey,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
                     // Play button overlay
                     if (_isHovered)
                       Container(

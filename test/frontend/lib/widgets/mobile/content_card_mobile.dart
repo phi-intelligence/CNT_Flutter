@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/content_item.dart';
+import '../shared/image_helper.dart';
 
 class ContentCardMobile extends StatelessWidget {
   final ContentItem item;
@@ -35,20 +36,52 @@ class ContentCardMobile extends StatelessWidget {
               SizedBox(
                 width: 60,
                 height: 60,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(8),
-                    image: item.coverImage != null
-                        ? DecorationImage(
-                            image: NetworkImage(item.coverImage!),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: item.coverImage == null
-                      ? Icon(Icons.music_note, color: Colors.grey[500], size: 28)
-                      : null,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: item.coverImage != null
+                      ? Image(
+                          image: ImageHelper.getImageProvider(
+                            item.coverImage,
+                            fallbackAsset: ImageHelper.getFallbackAsset(
+                              int.tryParse(item.id) ?? 0,
+                            ),
+                          ),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.asset(
+                              ImageHelper.getFallbackAsset(
+                                int.tryParse(item.id) ?? 0,
+                              ),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[300],
+                                  child: const Icon(
+                                    Icons.music_note,
+                                    color: Colors.grey,
+                                    size: 28,
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        )
+                      : Image.asset(
+                          ImageHelper.getFallbackAsset(
+                            int.tryParse(item.id) ?? 0,
+                          ),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[300],
+                              child: const Icon(
+                                Icons.music_note,
+                                color: Colors.grey,
+                                size: 28,
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ),
               const SizedBox(width: 12),

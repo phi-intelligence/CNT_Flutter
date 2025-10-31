@@ -37,10 +37,16 @@ class _MeetingCreatedScreenState extends State<MeetingCreatedScreen> {
   Future<void> _handleJoinMeeting() async {
     setState(() { _joining = true; _joinError = null; });
     try {
+      // Validate meetingId is a valid numeric ID from backend
+      final meetingIdInt = int.tryParse(widget.meetingId);
+      if (meetingIdInt == null || meetingIdInt <= 0) {
+        throw Exception('Invalid meeting ID: ${widget.meetingId}');
+      }
+      
       final identity = 'host-user-${DateTime.now().millisecondsSinceEpoch}';
       final userName = 'Host';
       final joinResp = await JitsiService().fetchTokenForMeeting(
-        streamOrMeetingId: int.tryParse(widget.meetingId) ?? 0,
+        streamOrMeetingId: meetingIdInt,
         userIdentity: identity,
         userName: userName,
         isHost: true,
