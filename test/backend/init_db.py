@@ -6,6 +6,7 @@ from app.models.podcast import Podcast
 from app.models.category import Category
 from app.models.user import User
 from app.models.music import MusicTrack
+from app.services.media_service import MediaService
 import json
 from pathlib import Path
 import random
@@ -50,6 +51,15 @@ async def init_db():
     
     print(f"📦 Found {len(audio_files)} audio files")
     
+    # Get list of video files
+    video_dir = Path(__file__).parent / "media" / "video"
+    video_files = list(video_dir.glob("*.mp4")) + list(video_dir.glob("*.mov")) + list(video_dir.glob("*.avi"))
+    
+    print(f"🎬 Found {len(video_files)} video files")
+    
+    # Initialize MediaService for getting video duration
+    media_service = MediaService()
+    
     # Seed podcasts from audio files
     async with engine.begin() as conn:
         # Delete existing podcasts
@@ -58,6 +68,7 @@ async def init_db():
         podcasts_data = []
         categories = [1, 2, 3, 4]  # sermon, bible-study, devotionals, prayer
         
+        # Seed audio podcasts
         for idx, audio_file in enumerate(audio_files[:30]):  # Limit to 30
             # Parse filename: BeyondBelief-YYYYMMDD-Title.mp3
             filename = audio_file.stem
@@ -70,6 +81,7 @@ async def init_db():
                 'title': title,
                 'description': f'A podcast episode about {title.lower()}',
                 'audio_url': f'audio/{audio_file.name}',
+                'video_url': None,
                 'cover_image': None,
                 'creator_id': 1,
                 'category_id': random.choice(categories),
@@ -81,14 +93,50 @@ async def init_db():
             await conn.execute(
                 text("""
                     INSERT INTO podcasts 
-                    (title, description, audio_url, cover_image, creator_id, category_id, duration, status, plays_count)
-                    VALUES (:title, :description, :audio_url, :cover_image, :creator_id, :category_id, :duration, :status, :plays_count)
+                    (title, description, audio_url, video_url, cover_image, creator_id, category_id, duration, status, plays_count)
+                    VALUES (:title, :description, :audio_url, :video_url, :cover_image, :creator_id, :category_id, :duration, :status, :plays_count)
                 """),
                 podcast_data
             )
-            print(f"  ✓ Added: {title}")
+            print(f"  ✓ Added audio podcast: {title}")
+        
+        # Seed video podcasts
+        for video_file in video_files:
+            # Parse filename - remove extension and format title
+            filename = video_file.stem
+            # Clean up title - remove resolution info, etc.
+            title = filename.split('(')[0].strip() if '(' in filename else filename
+            title = title.replace(' - Bible Chronicles Animation', '').strip()
+            
+            # Get video duration using MediaService
+            duration = media_service.get_duration(video_file)
+            if duration is None:
+                duration = random.randint(600, 3600)  # 10-60 minutes fallback
+            
+            podcast_data = {
+                'title': title,
+                'description': f'Animated Bible story: {title.lower()}',
+                'audio_url': None,
+                'video_url': f'video/{video_file.name}',
+                'cover_image': None,
+                'creator_id': 1,
+                'category_id': random.choice(categories),
+                'duration': duration,
+                'status': 'approved',
+                'plays_count': random.randint(0, 5000),
+            }
+            
+            await conn.execute(
+                text("""
+                    INSERT INTO podcasts 
+                    (title, description, audio_url, video_url, cover_image, creator_id, category_id, duration, status, plays_count)
+                    VALUES (:title, :description, :audio_url, :video_url, :cover_image, :creator_id, :category_id, :duration, :status, :plays_count)
+                """),
+                podcast_data
+            )
+            print(f"  ✓ Added video podcast: {title}")
     
-    print(f"\n✅ Database initialized with {len(audio_files)} podcasts")
+    print(f"\n✅ Database initialized with {len(audio_files)} audio podcasts and {len(video_files)} video podcasts")
 
 if __name__ == "__main__":
     asyncio.run(init_db())

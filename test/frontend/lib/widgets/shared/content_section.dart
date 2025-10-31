@@ -3,6 +3,7 @@ import '../../models/content_item.dart';
 import '../../utils/platform_helper.dart';
 import '../mobile/content_card_mobile.dart';
 import '../mobile/horizontal_content_card_mobile.dart';
+import '../mobile/disc_card_mobile.dart';
 import '../web/content_card_web.dart';
 
 class ContentSection extends StatelessWidget {
@@ -10,6 +11,7 @@ class ContentSection extends StatelessWidget {
   final List<ContentItem> items;
   final VoidCallback? onViewAll;
   final bool isHorizontal;
+  final bool useDiscDesign;
   final Function(ContentItem)? onItemTap;
   final Function(ContentItem)? onItemPlay;
 
@@ -19,6 +21,7 @@ class ContentSection extends StatelessWidget {
     required this.items,
     this.onViewAll,
     this.isHorizontal = false,
+    this.useDiscDesign = false,
     this.onItemTap,
     this.onItemPlay,
   });
@@ -131,6 +134,46 @@ class ContentSection extends StatelessWidget {
   }
 
   Widget _buildVerticalMobile(BuildContext context) {
+    // If disc design is enabled, show horizontal scrolling disc cards
+    if (useDiscDesign) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 170, // Height to accommodate disc + label
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 20.0),
+                  child: DiscCardMobile(
+                    item: items[index],
+                    onTap: onItemTap != null ? () => onItemTap!(items[index]) : null,
+                    onPlay: onItemPlay != null ? () => onItemPlay!(items[index]) : null,
+                    size: 120.0,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    }
+    
+    // Regular vertical list
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

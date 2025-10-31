@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
@@ -38,22 +39,56 @@ class VideoPlayerFullScreen extends StatefulWidget {
 }
 
 class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
-  bool _isPlaying = false;
+  VideoPlayerController? _controller;
+  bool _isInitializing = true;
+  bool _hasError = false;
   bool _isFullscreen = false;
   bool _showControls = true;
-  int _currentTime = 0;
-  double _volume = 0.8;
 
   @override
   void initState() {
     super.initState();
-    // Auto-hide controls after 3 seconds
+    _initializePlayer();
     _startControlsTimer();
+  }
+
+  Future<void> _initializePlayer() async {
+    try {
+      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+      await _controller!.initialize();
+      await _controller!.play();
+      
+      _controller!.addListener(_videoListener);
+      
+      if (mounted) {
+        setState(() {
+          _isInitializing = false;
+          _hasError = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isInitializing = false;
+          _hasError = true;
+        });
+      }
+    }
+  }
+
+  void _videoListener() {
+    if (mounted && _controller != null) {
+      setState(() {
+        // Update current time for seek callback
+        final position = _controller!.value.position;
+        widget.onSeek(position.inSeconds);
+      });
+    }
   }
 
   void _startControlsTimer() {
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted && _isPlaying) {
+      if (mounted && _controller != null && _controller!.value.isPlaying) {
         setState(() {
           _showControls = false;
         });
@@ -70,9 +105,15 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
     }
   }
 
-  void _togglePlayPause() {
+  Future<void> _togglePlayPause() async {
+    if (_controller == null) return;
+    
+    if (_controller!.value.isPlaying) {
+      await _controller!.pause();
+    } else {
+      await _controller!.play();
+    }
     setState(() {
-      _isPlaying = !_isPlaying;
       _showControls = true;
     });
     _startControlsTimer();
@@ -82,6 +123,13 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
     final mins = seconds ~/ 60;
     final secs = seconds % 60;
     return '${mins.toString().padLeft(1, '0')}:${secs.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  void dispose() {
+    _controller?.removeListener(_videoListener);
+    _controller?.dispose();
+    super.dispose();
   }
 
   @override
@@ -172,17 +220,41 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
                   color: Colors.black,
                   child: Stack(
                     children: [
-                      // Video Player (placeholder - will use video_player package)
-                      Center(
-                        child: Icon(
-                          Icons.play_circle_outline,
-                          size: 80,
-                          color: Colors.white.withOpacity(0.5),
+                      // Video Player
+                      if (_isInitializing)
+                        const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        )
+                      else if (_hasError)
+                        Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                size: 80,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Error loading video',
+                                style: TextStyle(color: Colors.white, fontSize: 18),
+                              ),
+                            ],
+                          ),
+                        )
+                      else if (_controller != null && _controller!.value.isInitialized)
+                        Positioned.fill(
+                          child: Center(
+                            child: AspectRatio(
+                              aspectRatio: _controller!.value.aspectRatio,
+                              child: VideoPlayer(_controller!),
+                            ),
+                          ),
                         ),
-                      ),
 
                       // Play/Pause Overlay
-                      if (!_isPlaying)
+                      if (!_isInitializing && !_hasError && _controller != null && !_controller!.value.isPlaying)
                         Positioned.fill(
                           child: Center(
                             child: Container(
@@ -314,13 +386,13 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
                                             ),
                                             child: IconButton(
                                               icon: Icon(
-                                                _isPlaying ? Icons.pause : Icons.play_arrow,
+                                                _controller != null && _controller!.value.isPlaying
+                                                    ? Icons.pause
+                                                    : Icons.play_arrow,
                                                 color: Colors.white,
                                                 size: 48,
                                               ),
-                                              onPressed: () {
-                                                _togglePlayPause();
-                                              },
+                                              onPressed: _togglePlayPause,
                                             ),
                                           ),
                                           IconButton(

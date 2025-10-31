@@ -43,10 +43,10 @@ class _LiveStreamViewerState extends State<LiveStreamViewer> {
 
   Future<void> _connectToStream() async {
     // TODO: Implement Jitsi Meet connection for live streaming
-    setState(() {
+      setState(() {
       _isConnected = false;
-      _isLoading = false;
-    });
+        _isLoading = false;
+      });
     // Placeholder - needs Jitsi Meet SDK integration
   }
 

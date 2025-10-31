@@ -13,6 +13,8 @@ from .live_stream import router as live_stream_router
 from .categories import router as categories_router
 from .upload import router as upload_router
 from .voice_chat import router as voice_chat_router
+from .video_editing import router as video_editing_router
+from .audio_editing import router as audio_editing_router
 
 api_router.include_router(podcasts_router, prefix="/podcasts", tags=["podcasts"])
 api_router.include_router(music_router, prefix="/music", tags=["music"])
@@ -23,4 +25,6 @@ api_router.include_router(live_stream_router, prefix="/live", tags=["live-stream
 api_router.include_router(categories_router, prefix="/categories", tags=["categories"])
 api_router.include_router(upload_router, prefix="/upload", tags=["upload"])
 api_router.include_router(voice_chat_router, prefix="/voice", tags=["voice-chat"])
+api_router.include_router(video_editing_router, prefix="/video-editing", tags=["video-editing"])
+api_router.include_router(audio_editing_router, prefix="/audio-editing", tags=["audio-editing"])
 

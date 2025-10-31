@@ -47,21 +47,21 @@ class _MeetingRoomScreenState extends State<MeetingRoomScreen> {
       // When Jitsi meeting ends, user will be returned here
       // Navigate back to previous screen
       if (mounted) {
-        setState(() {
+      setState(() {
           _joining = false;
-        });
+      });
         Navigator.of(context).popUntil((route) => route.isFirst || route.settings.name == '/');
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
+      setState(() {
           _joining = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to join meeting: $e')),
         );
-        Navigator.pop(context);
-      }
+    Navigator.pop(context);
+  }
     }
   }
 
@@ -75,12 +75,12 @@ class _MeetingRoomScreenState extends State<MeetingRoomScreen> {
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+        children: [
             if (_joining)
               const CircularProgressIndicator()
             else
               Column(
-                children: [
+                    children: [
                   const Icon(Icons.check_circle, color: Colors.green, size: 64),
                   const SizedBox(height: 16),
                   const Text('Meeting ended'),
@@ -90,9 +90,9 @@ class _MeetingRoomScreenState extends State<MeetingRoomScreen> {
                     child: const Text('Go Back'),
                   ),
                 ],
-              ),
-          ],
-        ),
+                ),
+              ],
+            ),
       ),
     );
   }

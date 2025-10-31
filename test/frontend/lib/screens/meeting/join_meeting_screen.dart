@@ -43,7 +43,7 @@ class _JoinMeetingScreenState extends State<JoinMeetingScreen> {
         roomNameFromLink = uri.pathSegments.last;
       } else {
         // Try simple split as fallback
-        final urlParts = meetingLink.split('/');
+      final urlParts = meetingLink.split('/');
         roomNameFromLink = urlParts.isNotEmpty && urlParts.last.isNotEmpty ? urlParts.last : null;
       }
     }
@@ -75,10 +75,10 @@ class _JoinMeetingScreenState extends State<JoinMeetingScreen> {
             )
           : await jitsiSvc.fetchTokenForMeeting(
               streamOrMeetingId: meetingIdInt!,
-              userIdentity: identity,
+        userIdentity: identity,
               userName: userName,
-              isHost: false,
-            );
+        isHost: false,
+      );
       setState(() { _joining = false; });
       Navigator.push(
         context,

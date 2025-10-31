@@ -4,11 +4,52 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import 'video_recording_screen.dart';
 import 'video_preview_screen.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 /// Video Podcast Create Screen
 /// Shows options to record video or choose from gallery
 class VideoPodcastCreateScreen extends StatelessWidget {
   const VideoPodcastCreateScreen({super.key});
+
+  Future<void> _selectVideoFromGallery(BuildContext context) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? video = await picker.pickVideo(
+        source: ImageSource.gallery,
+      );
+
+      if (video != null && context.mounted) {
+        final file = File(video.path);
+        final fileSize = await file.length();
+        
+        // Get video duration using video_player (basic estimation)
+        // In production, you might want to use FFprobe or similar
+        int estimatedDuration = 180; // Default estimate
+        
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VideoPreviewScreen(
+              videoUri: video.path,
+              source: 'gallery',
+              duration: estimatedDuration,
+              fileSize: fileSize,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error selecting video: $e'),
+            backgroundColor: AppColors.errorMain,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,21 +121,7 @@ class VideoPodcastCreateScreen extends StatelessWidget {
                         icon: Icons.photo_library,
                         title: 'Choose from Gallery',
                         description: 'Select an existing video from your gallery',
-                        onTap: () {
-                          // TODO: Implement actual file picker
-                          // For now, navigate to preview screen with mock data
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => VideoPreviewScreen(
-                                videoUri: 'gallery_video',
-                                source: 'gallery',
-                                duration: 180,
-                                fileSize: 1024 * 1024 * 50, // 50MB estimate
-                              ),
-                            ),
-                          );
-                        },
+                        onTap: () => _selectVideoFromGallery(context),
                       ),
                     ],
                   ),

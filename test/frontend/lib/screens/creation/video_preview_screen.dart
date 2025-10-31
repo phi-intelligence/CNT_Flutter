@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
+import 'dart:io';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
+import '../editing/video_editor_screen.dart';
 
 /// Video Preview Screen
 /// Shows recorded/uploaded video with playback and controls
@@ -23,25 +26,80 @@ class VideoPreviewScreen extends StatefulWidget {
 }
 
 class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
-  bool _isPlaying = false;
-  int _currentTime = 0;
+  VideoPlayerController? _controller;
+  bool _isInitializing = true;
+  bool _hasError = false;
+  String? _errorMessage;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializePlayer();
+  }
+
+  Future<void> _initializePlayer() async {
+    try {
+      _controller = VideoPlayerController.file(File(widget.videoUri));
+      await _controller!.initialize();
+      _controller!.addListener(() {
+        if (mounted) {
+          setState(() {});
+        }
+      });
+      setState(() {
+        _isInitializing = false;
+      });
+    } catch (e) {
+      setState(() {
+        _hasError = true;
+        _errorMessage = e.toString();
+        _isInitializing = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.removeListener(() {});
+    _controller?.dispose();
+    super.dispose();
+  }
 
   void _handleBack() {
     Navigator.pop(context);
   }
 
   void _handlePlayPause() {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+    
     setState(() {
-      _isPlaying = !_isPlaying;
+      if (_controller!.value.isPlaying) {
+        _controller!.pause();
+      } else {
+        _controller!.play();
+      }
     });
   }
 
-  void _handleEdit() {
-    // TODO: Navigate to VideoEditorScreen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Navigate to Video Editor')),
+  void _handleEdit() async {
+    // Navigate to VideoEditorScreen
+    final editedPath = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VideoEditorScreen(
+          videoPath: widget.videoUri,
+        ),
+      ),
     );
+
+    if (editedPath != null && mounted) {
+      // Update video path with edited version
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Video edited successfully')),
+      );
+      // TODO: Update video URI to edited path
+    }
   }
 
   void _handleAddCaptions() {
@@ -159,45 +217,80 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // Video placeholder
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.videocam,
-                            size: 80,
-                            color: Colors.white.withOpacity(0.5),
-                          ),
-                          const SizedBox(height: AppSpacing.medium),
-                          Text(
-                            'Video Preview',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                              fontSize: 18,
+                    // Actual Video Player
+                    if (_isInitializing)
+                      const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      )
+                    else if (_hasError)
+                      Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.error_outline,
+                              size: 64,
+                              color: Colors.white,
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    // Play button overlay
-                    if (!_isPlaying)
+                            const SizedBox(height: 16),
+                            Text(
+                              'Error loading video',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                              ),
+                            ),
+                            if (_errorMessage != null)
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Text(
+                                  _errorMessage!,
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                          ],
+                        ),
+                      )
+                    else if (_controller != null && _controller!.value.isInitialized)
                       GestureDetector(
                         onTap: _handlePlayPause,
-                        child: Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.play_arrow,
-                            size: 48,
-                            color: Colors.white,
+                        child: AspectRatio(
+                          aspectRatio: _controller!.value.aspectRatio,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              VideoPlayer(_controller!),
+                              // Play/Pause overlay
+                              if (!_controller!.value.isPlaying)
+                                Container(
+                                  color: Colors.black.withOpacity(0.3),
+                                  child: Center(
+                                    child: Container(
+                                      width: 80,
+                                      height: 80,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.play_arrow,
+                                        size: 48,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
+                      )
+                    else
+                      const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
                       ),
                   ],
                 ),
@@ -212,28 +305,36 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
                   SizedBox(
                     width: 50,
                     child: Text(
-                      _formatTime(_currentTime),
+                      _controller != null && _controller!.value.isInitialized
+                          ? _formatTime(_controller!.value.position.inSeconds)
+                          : _formatTime(0),
                       style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ),
                   Expanded(
                     child: Slider(
-                      value: _currentTime.toDouble(),
+                      value: _controller != null && _controller!.value.isInitialized
+                          ? _controller!.value.position.inSeconds.toDouble()
+                          : 0.0,
                       min: 0,
-                      max: widget.duration.toDouble(),
+                      max: _controller != null && _controller!.value.isInitialized
+                          ? _controller!.value.duration.inSeconds.toDouble()
+                          : widget.duration.toDouble(),
                       activeColor: Colors.white,
                       inactiveColor: Colors.white.withOpacity(0.3),
                       onChanged: (value) {
-                        setState(() {
-                          _currentTime = value.toInt();
-                        });
+                        if (_controller != null && _controller!.value.isInitialized) {
+                          _controller!.seekTo(Duration(seconds: value.toInt()));
+                        }
                       },
                     ),
                   ),
                   SizedBox(
                     width: 50,
                     child: Text(
-                      _formatTime(widget.duration),
+                      _controller != null && _controller!.value.isInitialized
+                          ? _formatTime(_controller!.value.duration.inSeconds)
+                          : _formatTime(widget.duration),
                       style: const TextStyle(color: Colors.white, fontSize: 12),
                       textAlign: TextAlign.right,
                     ),

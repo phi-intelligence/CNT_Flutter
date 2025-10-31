@@ -41,6 +41,7 @@ dependencies:
   
   # Camera & Media
   camera: ^0.10.5
+  record: ^6.1.2
   
   # Connectivity
   connectivity_plus: ^6.1.5
@@ -57,6 +58,7 @@ dependencies:
   
   # Video Conferencing
   jitsi_meet_flutter_sdk: ^11.6.0
+  
 
 dev_dependencies:
   flutter_test:

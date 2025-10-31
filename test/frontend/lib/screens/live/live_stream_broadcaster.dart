@@ -54,10 +54,10 @@ class _LiveStreamBroadcasterState extends State<LiveStreamBroadcaster> {
 
   Future<void> _startStreaming() async {
     // TODO: Implement Jitsi Meet connection for live streaming
-    setState(() {
+      setState(() {
       _isStreaming = false;
       _startTime = null;
-    });
+      });
     // Placeholder - needs Jitsi Meet SDK integration
   }
 

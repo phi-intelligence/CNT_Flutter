@@ -6,7 +6,17 @@ import 'dart:io' show Platform;
 class JitsiConfig {
   // Self-hosted Jitsi Meet server URL
   // Android emulator cannot use localhost; use 10.0.2.2 to reach host
+  // For real device, use your computer's IP address
+  // Configure via --dart-define=JITSI_SERVER=http://YOUR_IP:8000
   static String get serverUrl {
+    const jitsiServer = String.fromEnvironment(
+      'JITSI_SERVER',
+      defaultValue: '',
+    );
+    if (jitsiServer.isNotEmpty) {
+      return jitsiServer;
+    }
+    // Default behavior
     if (Platform.isAndroid) return 'http://10.0.2.2:8000';
     return 'http://localhost:8000';
   }

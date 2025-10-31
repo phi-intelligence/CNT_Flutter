@@ -4,11 +4,53 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import 'audio_recording_screen.dart';
 import 'audio_preview_screen.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
 
 /// Audio Podcast Create Screen
 /// Shows options to record audio or upload file
 class AudioPodcastCreateScreen extends StatelessWidget {
   const AudioPodcastCreateScreen({super.key});
+
+  Future<void> _selectAudioFile(BuildContext context) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.audio,
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.single.path != null && context.mounted) {
+        final audioPath = result.files.single.path!;
+        final file = File(audioPath);
+        final fileSize = await file.length();
+        
+        // Get audio duration - in production, use just_audio or similar
+        // For now, use a default estimate
+        int estimatedDuration = 180; // Default estimate
+        
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AudioPreviewScreen(
+              audioUri: audioPath,
+              source: 'file',
+              duration: estimatedDuration,
+              fileSize: fileSize,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error selecting audio file: $e'),
+            backgroundColor: AppColors.errorMain,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,21 +122,7 @@ class AudioPodcastCreateScreen extends StatelessWidget {
                         icon: Icons.audiotrack,
                         title: 'Upload Audio',
                         description: 'Select an existing audio file from your device',
-                        onTap: () async {
-                          // TODO: Implement actual file picker
-                          // For now, navigate to preview screen with mock data
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => AudioPreviewScreen(
-                                audioUri: 'uploaded_audio',
-                                source: 'file',
-                                duration: 180,
-                                fileSize: 1024 * 1024 * 3, // 3MB estimate
-                              ),
-                            ),
-                          );
-                        },
+                        onTap: () => _selectAudioFile(context),
                       ),
                     ],
                   ),

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart';
+import 'dart:io';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
+import '../editing/audio_editor_screen.dart';
 
 /// Audio Preview Screen
 /// Shows recorded/uploaded audio with playback and metadata form
@@ -24,30 +27,106 @@ class AudioPreviewScreen extends StatefulWidget {
 }
 
 class _AudioPreviewScreenState extends State<AudioPreviewScreen> {
-  bool _isPlaying = false;
-  int _currentTime = 0;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isInitializing = true;
+  bool _hasError = false;
+  String? _errorMessage;
   bool _isLoading = false;
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
 
   final TextEditingController _titleController = TextEditingController(text: 'My Audio Podcast');
   final TextEditingController _descriptionController = TextEditingController(text: 'A wonderful audio podcast about faith and spirituality');
   final TextEditingController _tagsController = TextEditingController(text: 'podcast, faith, spirituality');
 
+  @override
+  void initState() {
+    super.initState();
+    _initializePlayer();
+    _audioPlayer.positionStream.listen((position) {
+      if (mounted) {
+        setState(() {
+          _position = position;
+        });
+      }
+    });
+    _audioPlayer.durationStream.listen((duration) {
+      if (mounted) {
+        setState(() {
+          _duration = duration ?? Duration.zero;
+        });
+      }
+    });
+    _audioPlayer.playingStream.listen((playing) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  Future<void> _initializePlayer() async {
+    try {
+      await _audioPlayer.setFilePath(widget.audioUri);
+      setState(() {
+        _isInitializing = false;
+      });
+    } catch (e) {
+      setState(() {
+        _hasError = true;
+        _errorMessage = e.toString();
+        _isInitializing = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _tagsController.dispose();
+    super.dispose();
+  }
+
   void _handleBack() {
     Navigator.pop(context);
   }
 
-  void _handlePlayPause() {
-    setState(() {
-      _isPlaying = !_isPlaying;
-    });
-    // TODO: Implement actual audio playback
+  Future<void> _handlePlayPause() async {
+    try {
+      if (_audioPlayer.playing) {
+        await _audioPlayer.pause();
+      } else {
+        await _audioPlayer.play();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error playing audio: $e')),
+        );
+      }
+    }
   }
 
-  void _handleEdit() {
-    // TODO: Navigate to AudioEditorScreen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Navigate to Audio Editor')),
+  void _handleEdit() async {
+    // Navigate to AudioEditorScreen
+    final editedPath = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AudioEditorScreen(
+          audioPath: widget.audioUri,
+          title: _titleController.text.isNotEmpty ? _titleController.text : null,
+        ),
+      ),
     );
+
+    if (editedPath != null && mounted) {
+      // Update audio path with edited version
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Audio edited successfully')),
+      );
+      // TODO: Update audio URI to edited path
+    }
   }
 
   void _handleAddCaptions() {
@@ -92,13 +171,6 @@ class _AudioPreviewScreenState extends State<AudioPreviewScreen> {
     return '${(bytes / (k * i)).toStringAsFixed(2)} ${sizes[i]}';
   }
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _tagsController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -185,64 +257,105 @@ class _AudioPreviewScreenState extends State<AudioPreviewScreen> {
                         ),
                         const SizedBox(height: AppSpacing.tiny),
                         Text(
-                          '${_formatTime(widget.duration)} • ${_formatFileSize(widget.fileSize)}',
+                          _duration != Duration.zero
+                              ? '${_formatTime(_duration.inSeconds)} • ${_formatFileSize(widget.fileSize)}'
+                              : '${_formatTime(widget.duration)} • ${_formatFileSize(widget.fileSize)}',
                           style: AppTypography.body.copyWith(color: Colors.white.withOpacity(0.8)),
                         ),
                         const SizedBox(height: AppSpacing.large),
 
-                        // Play Button
-                        GestureDetector(
-                          onTap: _handlePlayPause,
-                          child: Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              _isPlaying ? Icons.pause : Icons.play_arrow,
-                              size: 32,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.medium),
-
-                        // Progress Bar
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: 50,
-                              child: Text(
-                                _formatTime(_currentTime),
-                                style: const TextStyle(color: Colors.white, fontSize: 12),
+                        if (_isInitializing)
+                          const CircularProgressIndicator(color: Colors.white)
+                        else if (_hasError)
+                          Column(
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                color: Colors.white,
+                                size: 32,
                               ),
-                            ),
-                            Expanded(
-                              child: Slider(
-                                value: _currentTime.toDouble(),
-                                min: 0,
-                                max: widget.duration.toDouble(),
-                                activeColor: Colors.white,
-                                inactiveColor: Colors.white.withOpacity(0.3),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _currentTime = value.toInt();
-                                  });
+                              const SizedBox(height: 8),
+                              Text(
+                                'Error loading audio',
+                                style: TextStyle(color: Colors.white70, fontSize: 12),
+                              ),
+                            ],
+                          )
+                        else ...[
+                          // Play Button
+                          GestureDetector(
+                            onTap: _handlePlayPause,
+                            child: Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: StreamBuilder<bool>(
+                                stream: _audioPlayer.playingStream,
+                                builder: (context, snapshot) {
+                                  final isPlaying = snapshot.data ?? false;
+                                  return Icon(
+                                    isPlaying ? Icons.pause : Icons.play_arrow,
+                                    size: 32,
+                                    color: Colors.white,
+                                  );
                                 },
                               ),
                             ),
-                            SizedBox(
-                              width: 50,
-                              child: Text(
-                                _formatTime(widget.duration),
-                                style: const TextStyle(color: Colors.white, fontSize: 12),
-                                textAlign: TextAlign.right,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: AppSpacing.medium),
+
+                          // Progress Bar
+                          StreamBuilder<Duration>(
+                            stream: _audioPlayer.positionStream,
+                            builder: (context, positionSnapshot) {
+                              final position = positionSnapshot.data ?? Duration.zero;
+                              return StreamBuilder<Duration?>(
+                                stream: _audioPlayer.durationStream,
+                                builder: (context, durationSnapshot) {
+                                  final duration = durationSnapshot.data ?? _duration;
+                                  return Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 50,
+                                        child: Text(
+                                          _formatTime(position.inSeconds),
+                                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Slider(
+                                          value: duration != Duration.zero
+                                              ? position.inSeconds.toDouble().clamp(0.0, duration.inSeconds.toDouble())
+                                              : 0.0,
+                                          min: 0,
+                                          max: duration != Duration.zero
+                                              ? duration.inSeconds.toDouble()
+                                              : widget.duration.toDouble(),
+                                          activeColor: Colors.white,
+                                          inactiveColor: Colors.white.withOpacity(0.3),
+                                          onChanged: (value) {
+                                            _audioPlayer.seek(Duration(seconds: value.toInt()));
+                                          },
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 50,
+                                        child: Text(
+                                          _formatTime((duration != Duration.zero ? duration : Duration(seconds: widget.duration)).inSeconds),
+                                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                                          textAlign: TextAlign.right,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ],
                       ],
                     ),
                   ),

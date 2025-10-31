@@ -15,6 +15,7 @@ import '../../theme/app_typography.dart';
 import '../../utils/format_utils.dart';
 import '../../utils/platform_utils.dart';
 import 'voice_chat_modal.dart';
+import '../../widgets/video_player.dart';
 
 class HomeScreenMobile extends StatefulWidget {
   const HomeScreenMobile({super.key});
@@ -76,6 +77,31 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
   void _handleItemTap(ContentItem item) {
     // Navigate to player - handled by SlidingAudioPlayer
     _handlePlay(item);
+  }
+
+  void _handlePlayVideo(ContentItem item) {
+    if (item.videoUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No video available for ${item.title}')),
+      );
+      return;
+    }
+
+    // Navigate to video player screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VideoPlayerWidget(
+          videoUrl: item.videoUrl!,
+          title: item.title,
+        ),
+      ),
+    );
+  }
+
+  void _handleItemTapVideo(ContentItem item) {
+    // Navigate to video player
+    _handlePlayVideo(item);
   }
 
   @override
@@ -163,7 +189,7 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
                 
                 const SizedBox(height: AppSpacing.extraLarge),
                 
-                // Featured Podcasts Section
+                // Video Podcasts Section (Previously Featured)
                 Consumer<PodcastProvider>(
                     builder: (context, provider, child) {
                       if (provider.isLoading) {
@@ -183,23 +209,23 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
                         );
                       }
                       
-                      if (provider.featuredPodcasts.isEmpty) {
+                      if (provider.featuredVideoPodcasts.isEmpty) {
                         return const SizedBox.shrink();
                       }
                       
                       return ContentSection(
-                        title: 'Featured',
-                        items: provider.featuredPodcasts,
+                        title: 'Video Podcasts',
+                        items: provider.featuredVideoPodcasts,
                         isHorizontal: true,
-                        onItemPlay: _handlePlay,
-                        onItemTap: _handleItemTap,
+                        onItemPlay: _handlePlayVideo,
+                        onItemTap: _handleItemTapVideo,
                       );
                     },
                 ),
                 
                 const SizedBox(height: AppSpacing.large),
                 
-                // New Podcasts Section
+                // Audio Podcasts Section
                 Consumer<PodcastProvider>(
                     builder: (context, provider, child) {
                       if (provider.isLoading) {
@@ -219,9 +245,10 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
                       }
                       
                       return ContentSection(
-                        title: 'New Podcasts',
+                        title: 'Audio Podcasts',
                         items: provider.podcasts.take(3).toList(),
                         isHorizontal: false,
+                        useDiscDesign: true,
                         onItemPlay: _handlePlay,
                         onItemTap: _handleItemTap,
                       );

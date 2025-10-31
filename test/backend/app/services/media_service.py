@@ -57,8 +57,17 @@ class MediaService:
         """Get media file duration in seconds using FFprobe"""
         try:
             probe = ffmpeg.probe(str(file_path))
-            duration = float(probe['streams'][0]['duration'])
-            return int(duration)
+            # Try to get duration from format first (more reliable)
+            if 'format' in probe and 'duration' in probe['format']:
+                duration = float(probe['format']['duration'])
+                return int(duration)
+            # Fallback to streams
+            for stream in probe.get('streams', []):
+                if 'duration' in stream:
+                    duration = float(stream['duration'])
+                    if duration > 0:
+                        return int(duration)
+            return None
         except Exception as e:
             print(f"Error getting duration: {e}")
             return None

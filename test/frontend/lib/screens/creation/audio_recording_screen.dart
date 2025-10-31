@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import 'audio_preview_screen.dart';
@@ -12,53 +15,132 @@ class AudioRecordingScreen extends StatefulWidget {
 }
 
 class _AudioRecordingScreenState extends State<AudioRecordingScreen> {
+  final AudioRecorder _recorder = AudioRecorder();
   bool _isRecording = false;
   bool _isPaused = false;
   int _recordingDuration = 0;
   int _pausedDuration = 0;
+  String? _recordingPath;
+  DateTime? _recordingStartTime;
 
   @override
   void initState() {
     super.initState();
   }
 
-  void _startRecording() {
-    setState(() {
-      _isRecording = true;
-      _isPaused = false;
-    });
-    _updateDuration();
+  @override
+  void dispose() {
+    _recorder.dispose();
+    super.dispose();
   }
 
-  void _pauseRecording() {
-    setState(() {
-      _isPaused = true;
-    });
+  Future<void> _startRecording() async {
+    try {
+      if (await _recorder.hasPermission()) {
+        final directory = await getApplicationDocumentsDirectory();
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final path = '${directory.path}/recording_$timestamp.m4a';
+        
+        await _recorder.start(
+          const RecordConfig(
+            encoder: AudioEncoder.aacLc,
+            bitRate: 128000,
+            sampleRate: 44100,
+          ),
+          path: path,
+        );
+        
+        setState(() {
+          _isRecording = true;
+          _isPaused = false;
+          _recordingPath = path;
+          _recordingStartTime = DateTime.now();
+        });
+        _updateDuration();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Microphone permission denied')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error starting recording: $e')),
+        );
+      }
+    }
   }
 
-  void _resumeRecording() {
-    setState(() {
-      _isPaused = false;
-    });
-    _updateDuration();
+  Future<void> _pauseRecording() async {
+    try {
+      await _recorder.pause();
+      setState(() {
+        _isPaused = true;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error pausing recording: $e')),
+        );
+      }
+    }
   }
 
-  void _stopAndSave() {
-    setState(() {
-      _isRecording = false;
-    });
-    // Navigate to audio preview screen
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AudioPreviewScreen(
-          audioUri: 'recording_path',
-          source: 'recording',
-          duration: _recordingDuration,
-          fileSize: _recordingDuration * 1024 * 16, // Estimate 16KB per second
-        ),
-      ),
-    );
+  Future<void> _resumeRecording() async {
+    try {
+      await _recorder.resume();
+      setState(() {
+        _isPaused = false;
+      });
+      _updateDuration();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error resuming recording: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _stopAndSave() async {
+    try {
+      final path = await _recorder.stop();
+      if (path != null && mounted) {
+        final file = File(path);
+        final fileSize = await file.length();
+        
+        setState(() {
+          _isRecording = false;
+        });
+        
+        // Navigate to audio preview screen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AudioPreviewScreen(
+              audioUri: path,
+              source: 'recording',
+              duration: _recordingDuration,
+              fileSize: fileSize,
+            ),
+          ),
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No recording saved')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error stopping recording: $e')),
+        );
+      }
+    }
   }
 
   void _discardRecording() {

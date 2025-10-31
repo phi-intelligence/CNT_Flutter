@@ -9,12 +9,16 @@ class PodcastProvider extends ChangeNotifier {
   List<ContentItem> _podcasts = [];
   List<ContentItem> _featuredPodcasts = [];
   List<ContentItem> _recentPodcasts = [];
+  List<ContentItem> _videoPodcasts = [];
+  List<ContentItem> _featuredVideoPodcasts = [];
   bool _isLoading = false;
   String? _error;
   
   List<ContentItem> get podcasts => _podcasts;
   List<ContentItem> get featuredPodcasts => _featuredPodcasts;
   List<ContentItem> get recentPodcasts => _recentPodcasts;
+  List<ContentItem> get videoPodcasts => _videoPodcasts;
+  List<ContentItem> get featuredVideoPodcasts => _featuredVideoPodcasts;
   bool get isLoading => _isLoading;
   String? get error => _error;
   
@@ -40,6 +44,9 @@ class PodcastProvider extends ChangeNotifier {
           audioUrl: podcast.audioUrl != null 
             ? _api.getMediaUrl(podcast.audioUrl!) 
             : null,
+          videoUrl: podcast.videoUrl != null 
+            ? _api.getMediaUrl(podcast.videoUrl!) 
+            : null,
           duration: podcast.duration != null 
             ? Duration(seconds: podcast.duration!)
             : null,
@@ -49,10 +56,20 @@ class PodcastProvider extends ChangeNotifier {
         );
       }).toList();
       
+      // Separate audio and video podcasts
+      final allPodcasts = _podcasts;
+      _podcasts = allPodcasts.where((p) => p.audioUrl != null && p.videoUrl == null).toList();
+      _videoPodcasts = allPodcasts.where((p) => p.videoUrl != null).toList();
+      
       // Get featured podcasts (sorted by plays count)
       _featuredPodcasts = List.from(_podcasts);
       _featuredPodcasts.sort((a, b) => b.plays.compareTo(a.plays));
       _featuredPodcasts = _featuredPodcasts.take(5).toList();
+      
+      // Get featured video podcasts (sorted by plays count)
+      _featuredVideoPodcasts = List.from(_videoPodcasts);
+      _featuredVideoPodcasts.sort((a, b) => b.plays.compareTo(a.plays));
+      _featuredVideoPodcasts = _featuredVideoPodcasts.take(5).toList();
       
       // Get recent podcasts (sorted by created_at)
       _recentPodcasts = List.from(_podcasts);
@@ -97,6 +114,9 @@ class PodcastProvider extends ChangeNotifier {
           : null,
         audioUrl: podcast.audioUrl != null 
           ? _api.getMediaUrl(podcast.audioUrl!) 
+          : null,
+        videoUrl: podcast.videoUrl != null 
+          ? _api.getMediaUrl(podcast.videoUrl!) 
           : null,
         duration: podcast.duration != null 
           ? Duration(seconds: podcast.duration!)

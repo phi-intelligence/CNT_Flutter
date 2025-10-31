@@ -73,16 +73,16 @@ class MeetingOptionsScreenMobile extends StatelessWidget {
                                   );
                                   return;
                                 }
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => MeetingCreatedScreen(
-                                      meetingId: meetingId,
-                                      meetingLink: meetingLink,
-                                      isInstant: true,
-                                    ),
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => MeetingCreatedScreen(
+                                    meetingId: meetingId,
+                                    meetingLink: meetingLink,
+                                    isInstant: true,
                                   ),
-                                );
+                                ),
+                              );
                               } catch (e) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(content: Text('Failed to start instant meeting: $e')),

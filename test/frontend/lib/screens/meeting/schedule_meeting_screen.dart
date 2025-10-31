@@ -99,16 +99,16 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
 
       if (!mounted) return;
       setState(() { _isLoading = false; });
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MeetingCreatedScreen(
-            meetingId: meetingId,
-            meetingLink: meetingLink,
-            isInstant: false,
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MeetingCreatedScreen(
+              meetingId: meetingId,
+              meetingLink: meetingLink,
+              isInstant: false,
+            ),
           ),
-        ),
-      );
+        );
     } catch (e) {
       if (!mounted) return;
       setState(() { _isLoading = false; });

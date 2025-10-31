@@ -15,7 +15,13 @@ class WebSocketService {
   Future<void> connect() async {
     if (_isConnected) return;
     try {
-      final url = 'http://10.0.2.2:8002';
+      // Use API_BASE environment variable if provided, otherwise default to emulator IP
+      final baseUrl = const String.fromEnvironment(
+        'API_BASE',
+        defaultValue: 'http://10.0.2.2:8002/api/v1',
+      );
+      // Extract base URL without /api/v1
+      final url = baseUrl.replaceAll('/api/v1', '');
       _socket = IO.io(url, <String, dynamic>{
         'path': '/socket.io/',
         'transports': ['websocket'],

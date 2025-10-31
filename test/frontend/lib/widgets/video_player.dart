@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 
 class VideoPlayerWidget extends StatefulWidget {
   final String videoUrl;
@@ -15,18 +16,45 @@ class VideoPlayerWidget extends StatefulWidget {
 }
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
+  VideoPlayerController? _controller;
   bool _showControls = true;
-  bool _isPlaying = false;
+  bool _isInitializing = true;
+  bool _hasError = false;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _autoHideControls();
+    _initializePlayer();
+  }
+
+  Future<void> _initializePlayer() async {
+    try {
+      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+      await _controller!.initialize();
+      _controller!.addListener(_videoListener);
+      setState(() {
+        _isInitializing = false;
+      });
+      _autoHideControls();
+    } catch (e) {
+      setState(() {
+        _hasError = true;
+        _errorMessage = e.toString();
+        _isInitializing = false;
+      });
+    }
+  }
+
+  void _videoListener() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _autoHideControls() {
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted && _isPlaying) {
+      if (mounted && _controller != null && _controller!.value.isPlaying) {
         setState(() => _showControls = false);
       }
     });
@@ -41,6 +69,31 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     });
   }
 
+  void _togglePlayPause() {
+    if (_controller != null && _controller!.value.isInitialized) {
+      setState(() {
+        if (_controller!.value.isPlaying) {
+          _controller!.pause();
+        } else {
+          _controller!.play();
+        }
+      });
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds.remainder(60);
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  void dispose() {
+    _controller?.removeListener(_videoListener);
+    _controller?.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,36 +102,52 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
         onTap: _toggleControls,
         child: Stack(
           children: [
-            // Video Player Placeholder
-            Center(
-              child: Container(
-                width: double.infinity,
-                height: 300,
-                color: Colors.grey[900],
+            // Video Player
+            if (_isInitializing)
+              const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              )
+            else if (_hasError)
+              Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(
-                      Icons.play_circle_outline,
+                      Icons.error_outline,
                       size: 80,
                       color: Colors.white,
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      widget.title ?? 'Video Player',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      'Error loading video',
+                      style: const TextStyle(color: Colors.white, fontSize: 18),
                     ),
+                    if (_errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          _errorMessage!,
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                   ],
                 ),
+              )
+            else if (_controller != null && _controller!.value.isInitialized)
+              Center(
+                child: AspectRatio(
+                  aspectRatio: _controller!.value.aspectRatio,
+                  child: VideoPlayer(_controller!),
+                ),
+              )
+            else
+              const Center(
+                child: CircularProgressIndicator(color: Colors.white),
               ),
-            ),
 
             // Controls Overlay
-            if (_showControls)
+            if (_showControls && !_isInitializing && !_hasError)
               Positioned(
                 top: 40,
                 left: 16,
@@ -91,9 +160,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                     if (widget.title != null)
-                      Text(
-                        widget.title!,
-                        style: const TextStyle(color: Colors.white),
+                      Expanded(
+                        child: Text(
+                          widget.title!,
+                          style: const TextStyle(color: Colors.white),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     const SizedBox(), // Spacer
                   ],
@@ -101,22 +173,20 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
               ),
 
             // Play/Pause Button (Centered)
-            if (_showControls)
+            if (_showControls && !_isInitializing && !_hasError && _controller != null)
               Center(
                 child: IconButton(
                   icon: Icon(
-                    _isPlaying ? Icons.pause : Icons.play_arrow,
+                    _controller!.value.isPlaying ? Icons.pause : Icons.play_arrow,
                     color: Colors.white,
                     size: 64,
                   ),
-                  onPressed: () {
-                    setState(() => _isPlaying = !_isPlaying);
-                  },
+                  onPressed: _togglePlayPause,
                 ),
               ),
 
             // Bottom Controls
-            if (_showControls)
+            if (_showControls && !_isInitializing && !_hasError && _controller != null)
               Positioned(
                 bottom: 16,
                 left: 16,
@@ -126,9 +196,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
                     // Progress Bar
                     Row(
                       children: [
-                        const Text(
-                          '0:00',
-                          style: TextStyle(color: Colors.white, fontSize: 12),
+                        SizedBox(
+                          width: 50,
+                          child: Text(
+                            _formatDuration(_controller!.value.position),
+                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                          ),
                         ),
                         Expanded(
                           child: SliderTheme(
@@ -137,20 +210,30 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
                               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                             ),
                             child: Slider(
-                              value: 0,
+                              value: _controller != null && _controller!.value.isInitialized
+                                  ? _controller!.value.position.inMilliseconds.toDouble()
+                                  : 0.0,
                               min: 0,
-                              max: 100,
+                              max: _controller != null && _controller!.value.isInitialized
+                                  ? _controller!.value.duration.inMilliseconds.toDouble()
+                                  : 100.0,
                               activeColor: Colors.white,
                               inactiveColor: Colors.white38,
                               onChanged: (value) {
-                                // Handle volume change
+                                if (_controller != null && _controller!.value.isInitialized) {
+                                  _controller!.seekTo(Duration(milliseconds: value.toInt()));
+                                }
                               },
                             ),
                           ),
                         ),
-                        const Text(
-                          '10:00',
-                          style: TextStyle(color: Colors.white, fontSize: 12),
+                        SizedBox(
+                          width: 50,
+                          child: Text(
+                            _formatDuration(_controller!.value.duration),
+                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                            textAlign: TextAlign.right,
+                          ),
                         ),
                       ],
                     ),
@@ -161,21 +244,26 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.skip_previous, color: Colors.white),
-                          onPressed: () {},
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            _isPlaying ? Icons.pause : Icons.play_arrow,
-                            color: Colors.white,
-                            size: 40,
-                          ),
                           onPressed: () {
-                            setState(() => _isPlaying = !_isPlaying);
+                            final newPosition = _controller!.value.position - const Duration(seconds: 10);
+                            _controller!.seekTo(newPosition < Duration.zero ? Duration.zero : newPosition);
                           },
                         ),
                         IconButton(
+                          icon: Icon(
+                            _controller!.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                            color: Colors.white,
+                            size: 40,
+                          ),
+                          onPressed: _togglePlayPause,
+                        ),
+                        IconButton(
                           icon: const Icon(Icons.skip_next, color: Colors.white),
-                          onPressed: () {},
+                          onPressed: () {
+                            final newPosition = _controller!.value.position + const Duration(seconds: 10);
+                            final maxPosition = _controller!.value.duration;
+                            _controller!.seekTo(newPosition > maxPosition ? maxPosition : newPosition);
+                          },
                         ),
                       ],
                     ),

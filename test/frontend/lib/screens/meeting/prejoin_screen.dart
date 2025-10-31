@@ -75,8 +75,8 @@ class _PrejoinScreenState extends State<PrejoinScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(AppSpacing.large),
-        child: Column(
-          children: [
+              child: Column(
+                children: [
             const SizedBox(height: AppSpacing.extraLarge),
             // Preview placeholder
             Container(
@@ -86,16 +86,16 @@ class _PrejoinScreenState extends State<PrejoinScreen> {
                 borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
                 border: Border.all(color: AppColors.borderPrimary),
               ),
-              alignment: Alignment.center,
+                      alignment: Alignment.center,
               child: cameraEnabled
                   ? Icon(Icons.videocam, size: 80, color: AppColors.primaryMain)
                   : Icon(Icons.videocam_off, size: 80, color: AppColors.textSecondary),
-            ),
+                  ),
             const SizedBox(height: AppSpacing.extraLarge),
             Text(
               'Room: ${widget.roomName}',
               style: AppTypography.body.copyWith(color: AppColors.textSecondary),
-            ),
+                  ),
             const SizedBox(height: AppSpacing.medium),
             // Camera toggle
             ListTile(
@@ -132,20 +132,20 @@ class _PrejoinScreenState extends State<PrejoinScreen> {
                   setState(() {
                     micEnabled = value;
                   });
-                },
-              ),
-            ),
+                        },
+                      ),
+                  ),
             const Spacer(),
             // Join button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
                 icon: const Icon(Icons.meeting_room, color: Colors.white),
                 label: const Text(
                   'Join Meeting',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16),
                 ),
-                onPressed: _onJoin,
+                      onPressed: _onJoin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryMain,
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.large),
@@ -153,12 +153,12 @@ class _PrejoinScreenState extends State<PrejoinScreen> {
                     borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
                   ),
                 ),
-              ),
+                    ),
             ),
             const SizedBox(height: AppSpacing.medium),
-          ],
-        ),
-      ),
+                ],
+              ),
+            ),
     );
   }
 }
