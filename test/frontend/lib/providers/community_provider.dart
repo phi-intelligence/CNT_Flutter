@@ -10,6 +10,9 @@ class CommunityProvider extends ChangeNotifier {
   String? _selectedCategory;
   bool _hasMore = false; // Pagination support (set to false for now if backend doesn't support pagination)
   
+  // Comments cache: post_id -> comments list
+  Map<int, List<dynamic>> _comments = {};
+  
   List<dynamic> get posts => _posts;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -81,6 +84,58 @@ class CommunityProvider extends ChangeNotifier {
     } catch (e) {
       print('Error liking post: $e');
       // Optionally show an error message to user
+    }
+  }
+
+  /// Fetch comments for a specific post
+  Future<void> fetchComments(int postId) async {
+    try {
+      final comments = await _api.getPostComments(postId);
+      _comments[postId] = comments;
+      notifyListeners();
+    } catch (e) {
+      print('Error fetching comments: $e');
+      _comments[postId] = [];
+    }
+  }
+
+  /// Get comments for a specific post (from cache)
+  List<dynamic> getCommentsForPost(int postId) {
+    return _comments[postId] ?? [];
+  }
+
+  /// Add a new comment to a post
+  Future<void> addComment(int postId, String content) async {
+    try {
+      final newComment = await _api.commentPost(postId, content);
+      
+      // Add to comments cache
+      if (_comments.containsKey(postId)) {
+        _comments[postId]!.add(newComment);
+      } else {
+        _comments[postId] = [newComment];
+      }
+      
+      // Update post comment count
+      final index = _posts.indexWhere((post) {
+        final id = post is Map ? post['id'] : post.id;
+        return id == postId;
+      });
+      
+      if (index != -1) {
+        final post = _posts[index];
+        if (post is Map<String, dynamic>) {
+          final updatedPost = Map<String, dynamic>.from(post);
+          final currentCount = updatedPost['comments_count'] ?? 0;
+          updatedPost['comments_count'] = currentCount + 1;
+          _posts[index] = updatedPost;
+        }
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      print('Error adding comment: $e');
+      rethrow;
     }
   }
 }

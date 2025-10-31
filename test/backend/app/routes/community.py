@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from app.database import get_db
-from app.models import CommunityPost, User, Like
+from app.models import CommunityPost, User, Like, Comment
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -200,4 +200,122 @@ async def toggle_like_post(
         "liked": is_liked,
         "likes_count": post.likes_count
     }
+
+
+# Comment-related schemas
+class CommentResponse(BaseModel):
+    id: int
+    post_id: int
+    user_id: int
+    user_name: Optional[str] = None
+    user_avatar: Optional[str] = None
+    content: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class CommentCreate(BaseModel):
+    content: str
+
+
+@router.get("/posts/{post_id}/comments", response_model=List[CommentResponse])
+async def get_post_comments(
+    post_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all comments for a specific post"""
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    
+    # Verify post exists
+    post_result = await db.execute(
+        select(CommunityPost).where(CommunityPost.id == post_id)
+    )
+    post = post_result.scalar_one_or_none()
+    
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Get all comments with user info
+    query = select(Comment).where(Comment.post_id == post_id)\
+        .options(selectinload(Comment.user))\
+        .order_by(Comment.created_at.asc())
+    
+    result = await db.execute(query)
+    comments = result.scalars().all()
+    
+    # Build response with user info
+    response_comments = []
+    for comment in comments:
+        user = comment.user if hasattr(comment, 'user') else None
+        
+        # If user relationship didn't load, fetch it manually
+        if user is None:
+            user_result = await db.execute(
+                select(User).where(User.id == comment.user_id)
+            )
+            user = user_result.scalar_one_or_none()
+        
+        response_comments.append(CommentResponse(
+            id=comment.id,
+            post_id=comment.post_id,
+            user_id=comment.user_id,
+            user_name=user.name if user else "Unknown User",
+            user_avatar=user.avatar if user else None,
+            content=comment.content,
+            created_at=comment.created_at,
+        ))
+    
+    return response_comments
+
+
+@router.post("/posts/{post_id}/comments", response_model=CommentResponse)
+async def create_comment(
+    post_id: int,
+    comment: CommentCreate,
+    current_user_id: int = 1,  # TODO: get from auth
+    db: AsyncSession = Depends(get_db)
+):
+    """Create a new comment on a post"""
+    from sqlalchemy import select
+    
+    # Verify post exists
+    post_result = await db.execute(
+        select(CommunityPost).where(CommunityPost.id == post_id)
+    )
+    post = post_result.scalar_one_or_none()
+    
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Create comment
+    db_comment = Comment(
+        post_id=post_id,
+        user_id=current_user_id,
+        content=comment.content
+    )
+    db.add(db_comment)
+    
+    # Increment comment count on post
+    post.comments_count += 1
+    
+    await db.commit()
+    await db.refresh(db_comment)
+    
+    # Load user relationship
+    await db.refresh(db_comment, ["user"])
+    
+    user = db_comment.user
+    
+    return CommentResponse(
+        id=db_comment.id,
+        post_id=db_comment.post_id,
+        user_id=db_comment.user_id,
+        user_name=user.name if user else None,
+        user_avatar=user.avatar if user else None,
+        content=db_comment.content,
+        created_at=db_comment.created_at,
+    )
 

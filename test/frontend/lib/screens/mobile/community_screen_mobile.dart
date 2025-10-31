@@ -9,6 +9,7 @@ import '../../widgets/shared/empty_state.dart';
 import '../../widgets/create_post_modal.dart';
 import '../../widgets/community/instagram_post_card.dart';
 import '../../utils/format_utils.dart';
+import '../community/comment_screen.dart';
 
 class CommunityScreenMobile extends StatefulWidget {
   const CommunityScreenMobile({super.key});
@@ -196,8 +197,11 @@ class _CommunityScreenMobileState extends State<CommunityScreenMobile> {
                           }
                         },
                         onComment: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Comments coming soon')),
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CommentScreen(post: postMap),
+                            ),
                           );
                         },
                         onShare: () {

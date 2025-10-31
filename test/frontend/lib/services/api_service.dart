@@ -270,6 +270,24 @@ class ApiService {
     }
   }
 
+  /// Get comments for a post
+  Future<List<dynamic>> getPostComments(int postId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/community/posts/$postId/comments'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data;
+      }
+      throw Exception('Failed to get comments: ${response.statusCode}');
+    } catch (e) {
+      throw Exception('Error fetching comments: $e');
+    }
+  }
+
   /// Comment on a post
   Future<Map<String, dynamic>> commentPost(int postId, String comment) async {
     try {
