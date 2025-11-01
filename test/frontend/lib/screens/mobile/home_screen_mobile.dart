@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../widgets/voice/voice_bubble.dart';
 import '../../widgets/shared/content_section.dart';
 import '../../widgets/shared/loading_shimmer.dart';
 import '../../widgets/shared/empty_state.dart';
@@ -15,8 +14,9 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import '../../utils/format_utils.dart';
 import '../../utils/platform_utils.dart';
-import 'voice_chat_modal.dart';
 import '../../widgets/video_player.dart';
+import '../audio/audio_player_full_screen_new.dart';
+import '../../widgets/shared/image_helper.dart';
 
 class HomeScreenMobile extends StatefulWidget {
   const HomeScreenMobile({super.key});
@@ -26,7 +26,6 @@ class HomeScreenMobile extends StatefulWidget {
 }
 
 class _HomeScreenMobileState extends State<HomeScreenMobile> {
-  bool _isVoiceActive = false;
   final ApiService _api = ApiService();
   
   List<ContentItem> _audioPodcasts = [];
@@ -132,17 +131,6 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
     }
   }
 
-  void _handleVoiceBubblePress() {
-    // Open voice chat modal as full screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const VoiceChatModal(),
-        fullscreenDialog: true,
-      ),
-    );
-  }
-
   String _getGreeting(Map<String, dynamic>? user) {
     final username = user?['name'] ?? 'Guest';
     return 'Hey $username';
@@ -190,6 +178,32 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
     _handlePlayVideo(item);
   }
 
+  void _handleDiscIconPress() {
+    // If there's a first audio podcast, play it and open full screen player
+    if (_audioPodcasts.isNotEmpty) {
+      final firstPodcast = _audioPodcasts.first;
+      if (firstPodcast.audioUrl != null) {
+        // Play the content
+        context.read<AudioPlayerState>().playContent(firstPodcast);
+        // Navigate to full screen audio player
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const AudioPlayerFullScreenNew(),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No audio available')),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No podcasts available')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final musicProvider = Provider.of<MusicProvider>(context, listen: false);
@@ -224,22 +238,22 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
                   child: Row(
                     children: [
                       Expanded(
-                  child: Padding(
+                        child: Padding(
                           padding: EdgeInsets.symmetric(horizontal: AppSpacing.large),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Consumer<UserProvider>(
-                          builder: (context, userProvider, child) {
-                            return Text(
-                              _getGreeting(userProvider.user),
-                              style: AppTypography.heading3.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Consumer<UserProvider>(
+                                builder: (context, userProvider, child) {
+                                  return Text(
+                                    _getGreeting(userProvider.user),
+                                    style: AppTypography.heading3.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
                               const SizedBox(height: AppSpacing.small),
                               Text(
                                 'welcome back',
@@ -248,27 +262,53 @@ class _HomeScreenMobileState extends State<HomeScreenMobile> {
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(height: AppSpacing.medium),
-                              Text(
-                                'Join AI podcast',
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: Colors.white.withOpacity(0.9),
-                                ),
-                              ),
                             ],
                           ),
                         ),
                       ),
-                      // Voice Bubble
+                      // Disc Icon
                       Padding(
                         padding: EdgeInsets.only(right: AppSpacing.large),
-                        child: VoiceBubble(
-                          onPressed: _handleVoiceBubblePress,
-                          isActive: _isVoiceActive,
-                          label: _isVoiceActive ? '' : '',
+                        child: GestureDetector(
+                          onTap: _handleDiscIconPress,
+                          child: Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      AppColors.primaryMain,
+                                      AppColors.accentMain,
+                                    ],
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    Icons.music_note,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ],
+                      ),
+                    ],
                   ),
                 ),
                 
