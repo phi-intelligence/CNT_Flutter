@@ -1,21 +1,41 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/api_models.dart';
+import '../utils/platform_helper.dart';
 
 /// API Service for connecting Flutter to backend
 class ApiService {
   // For Android emulator, use 10.0.2.2 to access host localhost
   // For iOS simulator, use localhost
+  // For web, use localhost
   // For real device, use your computer's IP address (e.g., 192.168.0.14)
   // Configure via --dart-define=API_BASE=http://YOUR_IP:8002/api/v1
-  static String get baseUrl => const String.fromEnvironment(
-    'API_BASE',
-    defaultValue: 'http://10.0.2.2:8002/api/v1',
-  );
-  static String get mediaBaseUrl => const String.fromEnvironment(
-    'MEDIA_BASE',
-    defaultValue: 'http://10.0.2.2:8002',
-  );
+  static String get baseUrl {
+    const envUrl = String.fromEnvironment('API_BASE');
+    if (envUrl.isNotEmpty) {
+      return envUrl;
+    }
+    // Use PlatformHelper for web-specific URL
+    try {
+      return PlatformHelper.getApiBaseUrl();
+    } catch (_) {
+      // Fallback for non-web platforms
+      return 'http://10.0.2.2:8002/api/v1';
+    }
+  }
+  
+  static String get mediaBaseUrl {
+    const envUrl = String.fromEnvironment('MEDIA_BASE');
+    if (envUrl.isNotEmpty) {
+      return envUrl;
+    }
+    try {
+      final apiUrl = PlatformHelper.getApiBaseUrl();
+      return apiUrl.replaceAll('/api/v1', '');
+    } catch (_) {
+      return 'http://10.0.2.2:8002';
+    }
+  }
   
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;

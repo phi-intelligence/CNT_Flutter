@@ -10,6 +10,25 @@ class ProfileScreen extends StatelessWidget {
         title: const Text('Profile'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.edit),
+            tooltip: 'Edit Profile',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Edit Profile'),
+                  content: const Text('Profile editing will be available soon.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
               // TODO: Open settings
@@ -127,19 +146,19 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           
-          // Stats Cards
+          // Circular Stats
           Row(
-            children: [
+            children: const [
               Expanded(
-                child: _StatCard(
+                child: _CircularStat(
                   icon: Icons.timer,
                   label: 'Listening Time',
                   value: '24h',
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
-                child: _StatCard(
+                child: _CircularStat(
                   icon: Icons.music_note,
                   label: 'Songs Played',
                   value: '156',
@@ -149,17 +168,17 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Row(
-            children: [
+            children: const [
               Expanded(
-                child: _StatCard(
+                child: _CircularStat(
                   icon: Icons.local_fire_department,
                   label: 'Current Streak',
                   value: '7 days',
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
-                child: _StatCard(
+                child: _CircularStat(
                   icon: Icons.category,
                   label: 'Top Genre',
                   value: 'Worship',
@@ -244,6 +263,11 @@ class ProfileScreen extends StatelessWidget {
       child: Column(
         children: [
           _SettingsTile(
+            icon: Icons.edit,
+            title: 'Edit Profile',
+            subtitle: 'Update name, avatar and details',
+          ),
+          _SettingsTile(
             icon: Icons.notifications,
             title: 'Notifications',
             subtitle: 'Manage notification preferences',
@@ -304,6 +328,70 @@ class _StatCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CircularStat extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _CircularStat({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                ],
+              ),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                width: 2,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey[600]),
+          ),
+        ],
       ),
     );
   }

@@ -2,38 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
+import '../../theme/app_typography.dart';
+import '../../providers/search_provider.dart';
+import '../../widgets/web/content_card_web.dart';
 import '../../widgets/shared/loading_shimmer.dart';
 import '../../widgets/shared/empty_state.dart';
-import '../../widgets/web/content_card_web.dart';
-import '../../providers/music_provider.dart';
 import '../../providers/audio_player_provider.dart';
 import '../../models/content_item.dart';
 import '../../utils/responsive_grid_delegate.dart';
 import '../../utils/dimension_utils.dart';
 
-/// Web Music Screen - Full implementation
-class MusicScreenWeb extends StatefulWidget {
-  const MusicScreenWeb({super.key});
+/// Web Search Screen - Full implementation
+class SearchScreenWeb extends StatefulWidget {
+  const SearchScreenWeb({super.key});
 
   @override
-  State<MusicScreenWeb> createState() => _MusicScreenWebState();
+  State<SearchScreenWeb> createState() => _SearchScreenWebState();
 }
 
-class _MusicScreenWebState extends State<MusicScreenWeb> {
+class _SearchScreenWebState extends State<SearchScreenWeb> {
   final TextEditingController _searchController = TextEditingController();
-  String _selectedGenre = 'All';
-  String _selectedSort = 'Latest';
-  final List<String> _genres = ['All', 'Worship', 'Gospel', 'Contemporary', 'Hymns', 'Choir', 'Instrumental'];
-  final List<String> _sortOptions = ['Latest', 'Popular', 'A-Z'];
-  List<ContentItem> _filteredTracks = [];
+  String _selectedFilter = 'All';
+  final List<String> _filters = ['All', 'Podcasts', 'Music', 'Videos', 'Posts', 'Users'];
 
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(_filterTracks);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MusicProvider>().fetchTracks();
-    });
+    _searchController.addListener(_performSearch);
   }
 
   @override
@@ -42,36 +37,15 @@ class _MusicScreenWebState extends State<MusicScreenWeb> {
     super.dispose();
   }
 
-  void _filterTracks() {
-    final provider = context.read<MusicProvider>();
-    final query = _searchController.text.toLowerCase();
-    
-    setState(() {
-      _filteredTracks = provider.tracks.where((track) {
-        final matchesSearch = query.isEmpty ||
-            track.title.toLowerCase().contains(query) ||
-            track.creator.toLowerCase().contains(query);
-        
-        final matchesGenre = _selectedGenre == 'All' ||
-            (track.category?.toLowerCase() == _selectedGenre.toLowerCase());
-        
-        return matchesSearch && matchesGenre;
-      }).toList();
-      
-      // Apply sorting
-      switch (_selectedSort) {
-        case 'Popular':
-          _filteredTracks.sort((a, b) => b.plays.compareTo(a.plays));
-          break;
-        case 'A-Z':
-          _filteredTracks.sort((a, b) => a.title.compareTo(b.title));
-          break;
-        case 'Latest':
-        default:
-          _filteredTracks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          break;
-      }
-    });
+  void _performSearch() {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) {
+      context.read<SearchProvider>().clearResults();
+      return;
+    }
+
+    final type = _selectedFilter == 'All' ? null : _selectedFilter.toLowerCase();
+    context.read<SearchProvider>().search(query, type: type);
   }
 
   void _handlePlay(ContentItem item) {
@@ -85,10 +59,6 @@ class _MusicScreenWebState extends State<MusicScreenWeb> {
     context.read<AudioPlayerState>().playContent(item);
   }
 
-  void _handleItemTap(ContentItem item) {
-    _handlePlay(item);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -98,51 +68,33 @@ class _MusicScreenWebState extends State<MusicScreenWeb> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with Sort
-            Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Music',
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      PopupMenuButton<String>(
-                        onSelected: (value) {
-                          setState(() {
-                            _selectedSort = value;
-                          });
-                          _filterTracks();
-                        },
-                        itemBuilder: (context) {
-                          return _sortOptions.map((option) {
-                            return PopupMenuItem(
-                              value: option,
-                              child: Row(
-                                children: [
-                                  if (_selectedSort == option)
-                                    const Icon(Icons.check, color: AppColors.primaryMain, size: 20)
-                                  else
-                                    const SizedBox(width: 20),
-                                  Text(option),
-                                ],
-                              ),
-                            );
-                          }).toList();
-                        },
-                      ),
-                    ],
+            // Header
+            Text(
+                    'Search',
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.large),
                   
                   // Search Bar
                   TextField(
                     controller: _searchController,
+                    autofocus: true,
                     decoration: InputDecoration(
-                      hintText: 'Search music...',
+                      hintText: 'Search podcasts, music, and more...',
                       prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                setState(() {
+                                  _searchController.clear();
+                                });
+                              },
+                            )
+                          : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
                         borderSide: BorderSide.none,
@@ -154,26 +106,29 @@ class _MusicScreenWebState extends State<MusicScreenWeb> {
                         vertical: AppSpacing.medium,
                       ),
                     ),
+                    onChanged: (value) {
+                      setState(() {});
+                    },
                   ),
                   
                   const SizedBox(height: AppSpacing.medium),
                   
-                  // Genre Chips
+                  // Filter Chips
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: _genres.map((genre) {
-                        final isSelected = genre == _selectedGenre;
+                      children: _filters.map((filter) {
+                        final isSelected = filter == _selectedFilter;
                         return Padding(
                           padding: EdgeInsets.only(right: AppSpacing.small),
                           child: FilterChip(
-                            label: Text(genre),
+                            label: Text(filter),
                             selected: isSelected,
                             onSelected: (selected) {
                               setState(() {
-                                _selectedGenre = genre;
+                                _selectedFilter = filter;
                               });
-                              _filterTracks();
+                              _performSearch();
                             },
                             selectedColor: AppColors.primaryMain,
                             labelStyle: TextStyle(
@@ -188,10 +143,39 @@ class _MusicScreenWebState extends State<MusicScreenWeb> {
                   
                   const SizedBox(height: AppSpacing.large),
                   
-                  // Music Grid
+                  // Search Results
                   Expanded(
-                    child: Consumer<MusicProvider>(
+                    child: Consumer<SearchProvider>(
                       builder: (context, provider, child) {
+                        if (_searchController.text.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.search,
+                                  size: 80,
+                                  color: AppColors.textSecondary.withOpacity(0.5),
+                                ),
+                                const SizedBox(height: AppSpacing.large),
+                                Text(
+                                  'Search for content',
+                                  style: AppTypography.heading3.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpacing.small),
+                                Text(
+                                  'Find podcasts, music, videos, and more',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.textTertiary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
                         if (provider.isLoading) {
                           return GridView.builder(
                             padding: EdgeInsets.zero,
@@ -211,20 +195,11 @@ class _MusicScreenWebState extends State<MusicScreenWeb> {
                           );
                         }
 
-                        // Initialize filtered tracks on first load
-                        if (_filteredTracks.isEmpty && provider.tracks.isNotEmpty) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            _filterTracks();
-                          });
-                        }
-
-                        final tracksToShow = _filteredTracks.isEmpty ? provider.tracks : _filteredTracks;
-
-                        if (tracksToShow.isEmpty) {
+                        if (provider.results.isEmpty) {
                           return const EmptyState(
-                            icon: Icons.music_note,
-                            title: 'No Music Found',
-                            message: 'Try adjusting your search or filters',
+                            icon: Icons.search_off,
+                            title: 'No Results Found',
+                            message: 'Try different keywords or filters',
                           );
                         }
 
@@ -239,13 +214,13 @@ class _MusicScreenWebState extends State<MusicScreenWeb> {
                             crossAxisSpacing: AppSpacing.medium,
                             mainAxisSpacing: AppSpacing.medium,
                           ),
-                          itemCount: tracksToShow.length,
+                          itemCount: provider.results.length,
                           itemBuilder: (context, index) {
-                            final track = tracksToShow[index];
+                            final item = provider.results[index];
                             return ContentCardWeb(
-                              item: track,
-                              onTap: () => _handleItemTap(track),
-                              onPlay: () => _handlePlay(track),
+                              item: item,
+                              onTap: () => _handlePlay(item),
+                              onPlay: () => _handlePlay(item),
                             );
                           },
                         );

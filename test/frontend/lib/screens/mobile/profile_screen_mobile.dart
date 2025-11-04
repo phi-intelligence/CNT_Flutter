@@ -213,28 +213,56 @@ class _ProfileScreenMobileState extends State<ProfileScreenMobile> {
   }
 
   Widget _buildStatCard(String label, String value, IconData icon) {
-    return Card(
-      child: Padding(
-        padding: EdgeInsets.all(AppSpacing.medium),
-        child: Column(
-          children: [
-            Icon(icon, size: 32, color: AppColors.primaryMain),
-            const SizedBox(height: AppSpacing.small),
-            Text(
-              value,
-              style: AppTypography.heading3.copyWith(
-                fontWeight: FontWeight.bold,
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        vertical: AppSpacing.small,
+        horizontal: AppSpacing.tiny,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 78,
+            height: 78,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.primaryMain.withOpacity(0.12),
+                  AppColors.accentMain.withOpacity(0.12),
+                ],
+              ),
+              border: Border.all(
+                color: AppColors.primaryMain.withOpacity(0.25),
+                width: 2,
               ),
             ),
-            const SizedBox(height: AppSpacing.tiny),
-            Text(
-              label,
-              style: AppTypography.caption.copyWith(
-                color: AppColors.textSecondary,
-              ),
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 22, color: AppColors.primaryMain),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: AppTypography.heading4.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: AppSpacing.small),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: AppTypography.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
       ),
     );
   }

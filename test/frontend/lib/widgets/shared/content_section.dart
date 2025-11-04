@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../models/content_item.dart';
 import '../../utils/platform_helper.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_typography.dart';
 import '../mobile/content_card_mobile.dart';
 import '../mobile/horizontal_content_card_mobile.dart';
 import '../mobile/disc_card_mobile.dart';
 import '../web/content_card_web.dart';
+import '../web/disc_card_web.dart';
 
 class ContentSection extends StatelessWidget {
   final String title;
@@ -34,7 +37,11 @@ class ContentSection extends StatelessWidget {
 
     final isWeb = PlatformHelper.isWebPlatform();
 
-    if (isHorizontal && isWeb) {
+    if (useDiscDesign && isWeb) {
+      return _buildDiscDesignWeb(context);
+    } else if (useDiscDesign) {
+      return _buildVerticalMobile(context);
+    } else if (isHorizontal && isWeb) {
       return _buildHorizontalWeb(context);
     } else if (isHorizontal) {
       return _buildHorizontalMobile(context);
@@ -56,9 +63,9 @@ class ContentSection extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 20,
+                style: AppTypography.heading3.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
                 ),
               ),
               if (onViewAll != null)
@@ -100,9 +107,9 @@ class ContentSection extends StatelessWidget {
           children: [
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 24,
+              style: AppTypography.heading2.copyWith(
                 fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
               ),
             ),
             if (onViewAll != null)
@@ -114,13 +121,14 @@ class ContentSection extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         SizedBox(
-          height: 220,
+          height: 280, // Increased height for better card visibility
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 4.0), // Add padding for better scroll indication
             itemCount: items.length,
             itemBuilder: (context, index) {
               return SizedBox(
-                width: 180,
+                width: 200, // Slightly wider for better web experience
                 child: Padding(
                   padding: const EdgeInsets.only(right: 16.0),
                   child: _buildCard(context, items[index]),
@@ -143,9 +151,9 @@ class ContentSection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Text(
               title,
-              style: const TextStyle(
-                fontSize: 20,
+              style: AppTypography.heading3.copyWith(
                 fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
               ),
             ),
           ),
@@ -196,6 +204,51 @@ class ContentSection extends StatelessWidget {
     );
   }
 
+  Widget _buildDiscDesignWeb(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: AppTypography.heading2.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            if (onViewAll != null)
+              TextButton(
+                onPressed: onViewAll,
+                child: const Text('View All'),
+              ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          height: 250, // Height to accommodate disc + label (increased to prevent overflow)
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 4.0), // Add padding for better scroll indication
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 24.0),
+                child: DiscCardWeb(
+                  item: items[index],
+                  onTap: onItemTap != null ? () => onItemTap!(items[index]) : null,
+                  onPlay: onItemPlay != null ? () => onItemPlay!(items[index]) : null,
+                  size: 180.0,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildGridWeb(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final crossAxisCount = screenWidth > 1200 ? 4 : screenWidth > 800 ? 3 : 2;
@@ -208,9 +261,9 @@ class ContentSection extends StatelessWidget {
           children: [
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 24,
+              style: AppTypography.heading2.copyWith(
                 fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
               ),
             ),
             if (onViewAll != null)
